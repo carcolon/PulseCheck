@@ -1,0 +1,42 @@
+{
+  "name": "pulsecheck-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^4.26.2",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@microsoft/signalr": "^10.0.0",
+    "@mui/icons-material": "^9.1.1",
+    "@mui/material": "^9.1.2",
+    "@tailwindcss/vite": "^4.2.2",
+    "echarts": "^6.1.0",
+    "emoji-picker-react": "^4.19.1",
+    "framer-motion": "^12.42.2",
+    "gsap": "^3.14.2",
+    "postcss": "8.5.23",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.2.2"
+  },
+  "devDependencies": {
+    "@babel/core": "7.29.7",
+    "@storybook/addon-a11y": "^10.5.5",
+    "@storybook/addon-docs": "^10.5.5",
+    "@storybook/react-vite": "^10.5.5",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "5.1.0",
+    "storybook": "^10.5.5",
+    "typescript": "6.0.2",
+    "vite": "7.3.6"
+  }
+}

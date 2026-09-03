@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseCheck · Documentacion</title>
+  <style>
+    :root {
+      --bg: #f3f9fc;
+      --card: #ffffff;
+      --ink: #143247;
+      --muted: #5f7b8f;
+      --line: #cfe1ec;
+      --accent: #0597b5;
+      --accent-soft: #dff4f8;
+      --danger-soft: #fff0ec;
+      --radius: 24px;
+      --shadow: 0 18px 40px rgba(20, 50, 71, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #edf7fb 0%, #f7fbfd 100%);
+      color: var(--ink);
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 36px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+      margin-bottom: 28px;
+    }
+    h1 { font-size: 42px; line-height: 1.05; margin: 0 0 12px; }
+    p { color: var(--muted); font-size: 18px; line-height: 1.6; margin: 0; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+      margin-top: 28px;
+    }
+    .card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 46px rgba(20, 50, 71, 0.12);
+      border-color: #a9d8e5;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+    .note {
+      margin-top: 24px;
+      padding: 18px 20px;
+      border: 1px solid #f2d4c9;
+      background: var(--danger-soft);
+      border-radius: 20px;
+      color: #7b5341;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">PulseCheck</div>
+      <h1>Paquete de documentacion tecnica y de ciberseguridad</h1>
+      <p>Este paquete resume la arquitectura actual, el flujo operativo, la base de datos, los despliegues y la postura de seguridad vigente de la solucion PulseCheck. La documentacion separa los controles implementados de las brechas y refuerzos recomendados.</p>
+      <div class="grid">
+        <a class="card" href="./pulsecheck-api-technical.html">
+          <h2>Documentacion tecnica · API</h2>
+          <p>Backend ASP.NET Core, capa de aplicacion, persistencia, SignalR, autenticacion y despliegue en App Service.</p>
+        </a>
+        <a class="card" href="./pulsecheck-web-technical.html">
+          <h2>Documentacion tecnica · Web</h2>
+          <p>Panel React, landing, autenticacion, tiempo real, vistas operativas y pipeline de despliegue en Static Web App.</p>
+        </a>
+        <a class="card" href="./pulsecheck-agent-technical.html">
+          <h2>Documentacion tecnica · Agente</h2>
+          <p>Agente Windows, popup, sincronizacion, auto update, telemetria de bloqueo y pipeline de empaquetado.</p>
+        </a>
+        <a class="card" href="./pulsecheck-cybersecurity.html">
+          <h2>Documentacion de ciberseguridad</h2>
+          <p>Arquitectura de seguridad, controles implementados y evidencia alineada al baseline de seguridad.</p>
+        </a>
+        <a class="card" href="./pulsecheck-security-gaps.html">
+          <h2>Brechas y refuerzos</h2>
+          <p>Carencias, riesgos residuales y recomendaciones de codigo, plataforma y proceso en un documento separado.</p>
+        </a>
+      </div>
+      <div class="note">
+        La documentacion de ciberseguridad lista solo controles existentes. Las carencias y acciones recomendadas estan aisladas en el documento de brechas para evitar mezclar evidencia implementada con roadmap.
+      </div>
+    </section>
+  </main>
+</body>
+</html>

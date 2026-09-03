@@ -1,0 +1,51 @@
+name: pulsecheck-infra-${{ parameters.environment }}-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger: none
+pr: none
+
+parameters:
+- name: environment
+  displayName: Environment
+  type: string
+  default: dev
+  values:
+  - dev
+  - prod
+
+variables:
+- ${{ if eq(parameters.environment, 'dev') }}:
+  - template: pipelines/variables/dev.yml
+  - group: PulseCheckBackDev
+- ${{ if eq(parameters.environment, 'prod') }}:
+  - template: pipelines/variables/prod.yml
+
+stages:
+- stage: DeployInfrastructure
+  displayName: Deploy infrastructure (${{ parameters.environment }})
+  jobs:
+  - deployment: Infra
+    displayName: Deploy Azure resources (${{ parameters.environment }})
+    environment: $(azureEnvironmentName)
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - task: AzureCLI@2
+            displayName: Deploy Bicep
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az group create \
+                  --name "$(azureResourceGroup)" \
+                  --location "$(azureLocation)"
+
+                az deployment group create \
+                  --resource-group "$(azureResourceGroup)" \
+                  --template-file infra/main.bicep \
+                  --parameters @"$(infraParametersFile)" \
+                  --parameters sqlAdminPassword="$(sqlAdminPassword)"

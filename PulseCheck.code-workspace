@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "PulseCheck-agent"
+		},
+		{
+			"path": "PulseCheck-api"
+		},
+		{
+			"path": "PulseCheck-web"
+		}
+	],
+	"settings": {}
+}

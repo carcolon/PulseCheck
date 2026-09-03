@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PulseCheck - Mockup modulo LT</title>
+  <style>
+    :root {
+      --deep: #092333;
+      --deep-2: #071926;
+      --ink: #0d3140;
+      --muted: #607985;
+      --line: #d7e8ee;
+      --line-strong: #bfd8e1;
+      --panel: #ffffff;
+      --wash: #f4fbfd;
+      --teal: #00758d;
+      --cyan: #00bed6;
+      --green: #0f8f78;
+      --orange: #ee7623;
+      --pink: #f06a9c;
+      --danger: #b03d37;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 86% 8%, rgba(0, 190, 214, 0.09), transparent 28%),
+        radial-gradient(circle at 10% 0%, rgba(240, 159, 84, 0.14), transparent 26%),
+        linear-gradient(180deg, #f3f8fa 0%, #eaf3f7 100%);
+      color: var(--ink);
+      font-family: Manrope, "Segoe UI", Arial, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      gap: 20px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 20px;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 40px);
+      background: linear-gradient(180deg, var(--deep) 0%, #0b2030 48%, var(--deep-2) 100%);
+      border: 1px solid rgba(18, 63, 79, 0.84);
+      color: #fff;
+      padding: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: #9de9f0;
+      font-weight: 900;
+    }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+    }
+
+    .nav-item {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      min-height: 46px;
+      border-left: 4px solid transparent;
+      padding: 0 12px;
+      color: rgba(219,244,248,0.82);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .nav-item.active {
+      border-left-color: var(--pink);
+      background: rgba(0,190,214,0.18);
+      color: #fff;
+    }
+
+    .nav-icon {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      color: inherit;
+    }
+
+    .session {
+      margin-top: auto;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding-top: 16px;
+    }
+
+    .session-user {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      background: #dff8fb;
+      color: var(--deep);
+      font-weight: 900;
+    }
+
+    .session strong,
+    .session span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .session strong {
+      font-size: 13px;
+    }
+
+    .session span {
+      color: rgba(255,255,255,0.58);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .main {
+      min-width: 0;
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+
+    .command-bar,
+    .module-shell,
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.94);
+      box-shadow: none;
+    }
+
+    .command-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 20px 24px;
+    }
+
+    .eyebrow {
+      color: var(--teal);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      margin-top: 4px;
+      font-family: Sora, Manrope, Arial, sans-serif;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      border: 1px solid #cfe1e8;
+      background: #f8fcfd;
+      color: #375262;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .chip.primary {
+      border-color: rgba(0,117,141,0.18);
+      background: rgba(0,117,141,0.1);
+      color: var(--teal);
+    }
+
+    .module-shell {
+      padding: 22px;
+    }
+
+    .intro {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+      border-bottom: 1px solid rgba(0,117,141,0.14);
+      padding-bottom: 18px;
+    }
+
+    .intro h2 {
+      margin-top: 6px;
+      font-family: Sora, Manrope, Arial, sans-serif;
+      font-size: 30px;
+      line-height: 1.08;
+    }
+
+    .intro p {
+      max-width: 760px;
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .owner-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(240,106,156,0.26);
+      background: rgba(240,106,156,0.09);
+      color: #a73c67;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      background: #f8fcfd;
+      padding: 16px;
+    }
+
+    .metric span {
+      display: block;
+      color: #6b8590;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--ink);
+      font-family: Sora, Manrope, Arial, sans-serif;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      min-width: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid var(--line);
+      padding: 16px;
+    }
+
+    .panel-header h3 {
+      margin-top: 4px;
+      font-size: 18px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 220px 170px;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfdfe;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field label {
+      color: #6b8590;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #c8dce3;
+      background: #fff;
+      color: #17313c;
+      outline: none;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #e1edf2;
+      padding: 13px 16px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: var(--wash);
+      color: #6b8590;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: #274957;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .person {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .person-avatar {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      background: #eff9fc;
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .person strong,
+    .person span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .person strong {
+      color: #12394a;
+      font-size: 14px;
+    }
+
+    .person span {
+      color: #66808c;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: currentColor;
+      border-radius: 99px;
+      box-shadow: 0 0 0 5px rgba(15,143,120,0.12);
+    }
+
+    .assign-cell {
+      min-width: 210px;
+    }
+
+    .inline-assign {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .inline-assign select {
+      min-height: 36px;
+      border: 1px solid #c8dce3;
+      background: #fff;
+      padding: 7px 8px;
+      color: #17313c;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .icon-button {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(0,117,141,0.18);
+      background: rgba(0,117,141,0.1);
+      color: var(--teal);
+      cursor: default;
+      font-weight: 900;
+    }
+
+    .side-panel {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .assignment-list {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
+
+    .assignment {
+      border: 1px solid var(--line);
+      background: #f8fcfd;
+      padding: 12px;
+    }
+
+    .assignment-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .assignment strong {
+      color: #12394a;
+      font-size: 14px;
+    }
+
+    .assignment span,
+    .assignment small {
+      display: block;
+      color: #66808c;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .assignment small {
+      margin-top: 6px;
+    }
+
+    .count-pill {
+      display: inline-flex;
+      min-width: 34px;
+      justify-content: center;
+      border: 1px solid rgba(0,190,214,0.18);
+      background: rgba(0,190,214,0.1);
+      color: var(--teal);
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .rule-list {
+      display: grid;
+      gap: 10px;
+      padding: 14px 16px 16px;
+    }
+
+    .rule {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      gap: 9px;
+      color: #4d6874;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .rule-mark {
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      background: rgba(15,143,120,0.1);
+      color: var(--green);
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .primary-button {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      background: linear-gradient(90deg, var(--orange), #f09f54);
+      color: #fff;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: default;
+      white-space: nowrap;
+    }
+
+    .secondary-button {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #c5d9e1;
+      background: #fff;
+      color: #375262;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: default;
+      white-space: nowrap;
+    }
+
+    .footer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      border-top: 1px solid var(--line);
+      padding: 14px;
+    }
+
+    @media (max-width: 1180px) {
+      .workspace,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        height: auto;
+      }
+
+      .nav {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 780px) {
+      .layout {
+        padding: 12px;
+      }
+
+      .command-bar,
+      .intro,
+      .panel-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .chips {
+        justify-content: flex-start;
+      }
+
+      .metric-grid,
+      .toolbar,
+      .nav {
+        grid-template-columns: 1fr;
+      }
+
+      .module-shell {
+        padding: 16px;
+      }
+
+      .intro h2 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div>PulseCheck</div>
+      </div>
+
+      <nav class="nav" aria-label="Admin modules">
+        <div class="nav-item"><span class="nav-icon">▦</span><span>Resumen</span></div>
+        <div class="nav-item"><span class="nav-icon">◎</span><span>Campañas</span></div>
+        <div class="nav-item"><span class="nav-icon">▤</span><span>Agentes</span></div>
+        <div class="nav-item"><span class="nav-icon">↗</span><span>Actividad</span></div>
+        <div class="nav-item"><span class="nav-icon">◆</span><span>Insights</span></div>
+        <div class="nav-item"><span class="nav-icon">☷</span><span>Admins</span></div>
+        <div class="nav-item active"><span class="nav-icon">LT</span><span>LT</span></div>
+        <div class="nav-item"><span class="nav-icon">⚙</span><span>Configuración</span></div>
+      </nav>
+
+      <div class="session">
+        <div class="session-user">
+          <div class="avatar">O</div>
+          <div>
+            <strong>Owner Admin</strong>
+            <span>owner@solvoglobal.com</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="command-bar">
+        <div>
+          <div class="eyebrow">Admin suite</div>
+          <h1>Transformational Leaders</h1>
+        </div>
+        <div class="chips">
+          <div class="chip">1,284 agentes</div>
+          <div class="chip primary">Owner access</div>
+        </div>
+      </section>
+
+      <section class="module-shell">
+        <div class="intro">
+          <div>
+            <h2>TL Activos</h2>
+          </div>
+        </div>
+
+        <div class="metric-grid" aria-label="Resumen">
+          <div class="metric">
+            <span>Candidatos TL</span>
+            <strong>42</strong>
+          </div>
+          <div class="metric">
+            <span>Asignados</span>
+            <strong>31</strong>
+          </div>
+          <div class="metric">
+            <span>Sin operacion</span>
+            <strong>11</strong>
+          </div>
+          <div class="metric">
+            <span>Operaciones</span>
+            <strong>8</strong>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">People source</div>
+                <h3>TL activos</h3>
+              </div>
+              <button class="secondary-button">Exportar vista</button>
+            </div>
+
+            <div class="toolbar">
+              <div class="field">
+                <label for="search">Buscar persona</label>
+                <input id="search" value="" placeholder="Nombre, Solvo ID o email">
+              </div>
+              <div class="field">
+                <label for="operation">Operacion</label>
+                <select id="operation">
+                  <option>Todas las operaciones</option>
+                  <option>Landstar</option>
+                  <option>RTA</option>
+                  <option>Fabric Operations</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="assignment">Asignacion</label>
+                <select id="assignment">
+                  <option>Todos</option>
+                  <option>Asignados</option>
+                  <option>Sin asignar</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="assignment-list">
+              <div>
+                <div class="eyebrow">Cobertura</div>
+                <h3>TL por operacion</h3>
+              </div>
+              <div class="assignment">
+                <div class="assignment-top">
+                  <strong>Landstar</strong>
+                  <span class="count-pill">12</span>
+                </div>
+              </div>
+              <div class="assignment">
+                <div class="assignment-top">
+                  <strong>RTA</strong>
+                  <span class="count-pill">9</span>
+                </div>
+              </div>
+              <div class="assignment">
+                <div class="assignment-top">
+                  <strong>Fabric Operations</strong>
+                  <span class="count-pill">6</span>
+                </div>
+              </div>
+              <div class="assignment">
+                <div class="assignment-top">
+                  <strong>Sin asignar</strong>
+                  <span class="count-pill">11</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Persona</th>
+                    <th>Solvo ID</th>
+                    <th>Job title code</th>
+                    <th>Status</th>
+                    <th>Operacion asignada</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="person">
+                        <div class="person-avatar">AM</div>
+                        <div>
+                          <strong>Ana Martinez</strong>
+                          <span>ana.martinez@solvoglobal.com</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>94821</td>
+                    <td>1225</td>
+                    <td><span class="status">Active</span></td>
+                    <td class="assign-cell">
+                      <div class="inline-assign">
+                        <select aria-label="Operacion para Ana Martinez">
+                          <option>Landstar</option>
+                          <option>RTA</option>
+                          <option>Fabric Operations</option>
+                        </select>
+                        <button class="icon-button" title="Guardar asignacion">✓</button>
+                      </div>
+                    </td>
+                    <td><button class="secondary-button">Detalle</button></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="person">
+                        <div class="person-avatar">CR</div>
+                        <div>
+                          <strong>Carlos Rivas</strong>
+                          <span>carlos.rivas@solvoglobal.com</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>10274</td>
+                    <td>1225</td>
+                    <td><span class="status">Active</span></td>
+                    <td class="assign-cell">
+                      <div class="inline-assign">
+                        <select aria-label="Operacion para Carlos Rivas">
+                          <option>Sin asignar</option>
+                          <option>Landstar</option>
+                          <option>RTA</option>
+                          <option>Fabric Operations</option>
+                        </select>
+                        <button class="icon-button" title="Guardar asignacion">✓</button>
+                      </div>
+                    </td>
+                    <td><button class="secondary-button">Detalle</button></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="person">
+                        <div class="person-avatar">LP</div>
+                        <div>
+                          <strong>Laura Perez</strong>
+                          <span>laura.perez@solvoglobal.com</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>11309</td>
+                    <td>1225</td>
+                    <td><span class="status">Active</span></td>
+                    <td class="assign-cell">
+                      <div class="inline-assign">
+                        <select aria-label="Operacion para Laura Perez">
+                          <option>RTA</option>
+                          <option>Landstar</option>
+                          <option>Fabric Operations</option>
+                        </select>
+                        <button class="icon-button" title="Guardar asignacion">✓</button>
+                      </div>
+                    </td>
+                    <td><button class="secondary-button">Detalle</button></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="person">
+                        <div class="person-avatar">JS</div>
+                        <div>
+                          <strong>Julian Soto</strong>
+                          <span>julian.soto@solvoglobal.com</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>77844</td>
+                    <td>1225</td>
+                    <td><span class="status">Active</span></td>
+                    <td class="assign-cell">
+                      <div class="inline-assign">
+                        <select aria-label="Operacion para Julian Soto">
+                          <option>Fabric Operations</option>
+                          <option>Landstar</option>
+                          <option>RTA</option>
+                        </select>
+                        <button class="icon-button" title="Guardar asignacion">✓</button>
+                      </div>
+                    </td>
+                    <td><button class="secondary-button">Detalle</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="footer-actions">
+              <button class="secondary-button">Revertir cambios</button>
+              <button class="primary-button">Guardar asignaciones</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

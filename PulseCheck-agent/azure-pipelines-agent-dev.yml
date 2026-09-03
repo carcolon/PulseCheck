@@ -1,0 +1,343 @@
+name: pulsecheck-agent-${{ parameters.environment }}-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+    - dev
+  paths:
+    include:
+    - PulseCheck.Agent/*
+    - PulseCheck.Agent/**
+    - PulseCheck.Agent.Service/*
+    - PulseCheck.Agent.Service/**
+    - installer/*
+    - installer/**
+    - build-windows-service-installer.ps1
+    - azure-pipelines-agent*.yml
+    - pipelines/variables/*
+
+parameters:
+- name: environment
+  displayName: Environment
+  type: string
+  default: dev
+  values:
+  - dev
+  - prod
+
+variables:
+- ${{ if eq(parameters.environment, 'dev') }}:
+  - template: pipelines/variables/dev.yml
+  - group: PulseCheckAgentDev
+- ${{ if eq(parameters.environment, 'prod') }}:
+  - template: pipelines/variables/prod.yml
+- ${{ if eq(parameters.environment, 'prod') }}:
+  - group: PulseCheckAgentProd
+
+stages:
+- stage: PackageAgent
+  displayName: Package agent (${{ parameters.environment }})
+  jobs:
+  - job: BuildAgent
+    displayName: Build Windows agent (${{ parameters.environment }})
+    pool:
+      vmImage: windows-latest
+    steps:
+    - checkout: self
+    - pwsh: |
+        $isManual = "$(Build.Reason)" -eq "Manual"
+        Write-Host "Packaging environment '${{ parameters.environment }}' from branch '$(Build.SourceBranchName)' (reason: $(Build.Reason))"
+        if ($isManual) {
+          Write-Host "Manual run detected; allowing selected branch."
+          return
+        }
+        if ("${{ parameters.environment }}" -eq "dev" -and "$(Build.SourceBranchName)" -ne "dev") {
+          throw "Dev packages must run from the dev branch."
+        }
+        if ("${{ parameters.environment }}" -eq "prod" -and "$(Build.SourceBranchName)" -ne "main") {
+          throw "Prod packages must run from the main branch."
+        }
+      displayName: Validate package environment
+    - task: UseDotNet@2
+      inputs:
+        packageType: sdk
+        version: 8.x
+    - task: UseDotNet@2
+      inputs:
+        packageType: sdk
+        version: 9.x
+    - task: UsePythonVersion@0
+      displayName: Use Python 3.x
+      inputs:
+        versionSpec: 3.x
+    - script: |
+        python -m pip install --upgrade pip
+        pip install semgrep
+      displayName: Install Semgrep
+    - script: |
+        dotnet restore PulseCheck.Agent/PulseCheck.Agent.csproj
+        dotnet restore PulseCheck.Agent.Service/PulseCheck.Agent.Service.csproj
+        dotnet list PulseCheck.Agent/PulseCheck.Agent.csproj package --vulnerable --include-transitive --format json > "$(Build.ArtifactStagingDirectory)\dotnet-vulnerable-agent.json"
+      displayName: Dependency scan (.NET vulnerable packages JSON)
+    - script: |
+        semgrep --config p/owasp-top-ten PulseCheck.Agent PulseCheck.Agent.Service --json --output "$(Build.ArtifactStagingDirectory)\semgrep-agent.json"
+      displayName: SAST scan (Semgrep OWASP)
+    - task: PowerShell@2
+      displayName: Security gate (agent)
+      inputs:
+        targetType: inline
+        pwsh: true
+        script: |
+          $semgrepPath = "$(Build.ArtifactStagingDirectory)\semgrep-agent.json"
+          $dotnetPath = "$(Build.ArtifactStagingDirectory)\dotnet-vulnerable-agent.json"
+
+          $sem = Get-Content $semgrepPath -Raw | ConvertFrom-Json
+          $semErrors = @($sem.results | Where-Object { $_.extra.severity -eq "ERROR" }).Count
+
+          $dotnetJson = Get-Content $dotnetPath -Raw
+          $highOrCritical = [regex]::Matches($dotnetJson, '"severity"\s*:\s*"(?i)(high|critical)"').Count
+
+          Write-Host "Semgrep ERROR findings: $semErrors"
+          Write-Host ".NET high/critical vulnerabilities: $highOrCritical"
+
+          if ($semErrors -gt 0 -or $highOrCritical -gt 0) {
+            throw "Security gate failed. Semgrep ERROR=$semErrors, dotnet high/critical=$highOrCritical"
+          }
+    - script: |
+        dotnet publish PulseCheck.Agent/PulseCheck.Agent.csproj -c Release -r $(agentPublishRuntime) --self-contained $(agentSelfContained) -o $(Build.ArtifactStagingDirectory)\tray
+      displayName: Publish agent tray
+    - script: |
+        dotnet publish PulseCheck.Agent.Service/PulseCheck.Agent.Service.csproj -c Release -r $(agentPublishRuntime) --self-contained $(agentSelfContained) -o $(Build.ArtifactStagingDirectory)\service
+      displayName: Publish agent service
+    - task: PowerShell@2
+      displayName: Write packaged runtime override
+      inputs:
+        targetType: inline
+        script: |
+          $json = @{
+            PulseCheckAgent = @{
+              BaseUrl = "$(agentApiBaseUrl)"
+              ProvisioningToken = "$(agentProvisioningToken)"
+              AgentVersion = "$(agentVersion)"
+              PollingIntervalSeconds = [int]"$(agentPollingIntervalSeconds)"
+              LockedFirstAlertThresholdMinutes = [int]"$(agentLockedFirstAlertThresholdMinutes)"
+              LockedAlertThresholdMinutes = [int]"$(agentLockedAlertThresholdMinutes)"
+              LockedDurationReportIntervalMinutes = [int]"$(agentLockedDurationReportIntervalMinutes)"
+              AutoUpdateEnabled = [System.Convert]::ToBoolean("$(agentAutoUpdateEnabled)")
+              UpdateFeedUrl = "$(agentUpdateFeedUrl)"
+              UpdateCheckIntervalMinutes = [int]"$(agentUpdateCheckIntervalMinutes)"
+              LegacyUpdateManifestUrl = "$(agentLegacyUpdateManifestUrl)"
+            }
+          } | ConvertTo-Json -Depth 10
+          Set-Content -Path "$(Build.ArtifactStagingDirectory)\tray\appsettings.runtime.json" -Value $json -Encoding UTF8
+          Set-Content -Path "$(Build.ArtifactStagingDirectory)\service\appsettings.runtime.json" -Value $json -Encoding UTF8
+    - task: PowerShell@2
+      displayName: Stage tray and service package
+      inputs:
+        targetType: inline
+        script: |
+          $packageDir = "$(Build.ArtifactStagingDirectory)\agent"
+          $serviceTarget = Join-Path $packageDir "service"
+          New-Item -ItemType Directory -Force -Path $packageDir, $serviceTarget | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)\tray\*" -Destination $packageDir -Recurse -Force
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)\service\*" -Destination $serviceTarget -Recurse -Force
+    - task: PowerShell@2
+      displayName: Build Velopack releases
+      inputs:
+        targetType: inline
+        script: |
+          $releaseDir = "$(Build.ArtifactStagingDirectory)\releases"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+          dotnet tool install --global vpk --version "$(agentVelopackVersion)"
+          $vpk = Join-Path $env:USERPROFILE ".dotnet\tools\vpk.exe"
+
+          & $vpk pack `
+            --packId "PulseCheck.Agent" `
+            --packVersion "$(agentVersion)" `
+            --packDir "$(Build.ArtifactStagingDirectory)\agent" `
+            --mainExe "PulseCheck.Agent.exe" `
+            --packAuthors "Solvo Global" `
+            --packTitle "PulseCheck Agent" `
+            --icon "PulseCheck.Agent\Assets\PulseCheck.Agent.ico" `
+            --outputDir $releaseDir `
+            --runtime "$(agentPublishRuntime)" `
+            --shortcuts "Desktop,StartMenuRoot,Startup" `
+            --skipVeloAppCheck
+
+          $setup = Get-ChildItem -Path $releaseDir -Filter "*-Setup.exe" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+          if ($null -eq $setup) {
+            throw "Velopack no generó Setup.exe"
+          }
+
+
+          if (!(Test-Path (Join-Path $releaseDir "releases.win.json"))) {
+            throw "Velopack no generó releases.win.json"
+          }
+
+    - task: PowerShell@2
+      displayName: Build service and tray installer
+      inputs:
+        targetType: inline
+        script: |
+          choco install innosetup -y --no-progress
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          }
+          if (!(Test-Path $iscc)) {
+            throw "Inno Setup Compiler (ISCC.exe) was not found."
+          }
+
+          $installerOutputDir = "$(Build.ArtifactStagingDirectory)\installer"
+          New-Item -ItemType Directory -Force -Path $installerOutputDir | Out-Null
+          & $iscc `
+            "/DMyAppVersion=$(agentVersion)" `
+            "/DMyTrayPublishedDir=$(Build.ArtifactStagingDirectory)\tray" `
+            "/DMyServicePublishedDir=$(Build.ArtifactStagingDirectory)\service" `
+            "/DMyOutputDir=$installerOutputDir" `
+            "/DMyOutputBaseFilename=PulseCheck.Agent.Service.Setup" `
+            "installer\PulseCheck.Agent.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "ISCC failed with code $LASTEXITCODE"
+          }
+
+          $setup = Join-Path $installerOutputDir "PulseCheck.Agent.Service.Setup.exe"
+          if (!(Test-Path $setup)) {
+            throw "Service installer was not generated."
+          }
+
+          $installerPath = "$(Build.ArtifactStagingDirectory)\$(agentInstallerFileName)"
+          $latestInstallerPath = "$(Build.ArtifactStagingDirectory)\$(agentInstallerLatestFileName)"
+          $publicInstallerPath = "$(Build.ArtifactStagingDirectory)\$(agentPublicInstallerFileName)"
+          Copy-Item -Path $setup -Destination $installerPath -Force
+          if ($installerPath -ne $latestInstallerPath) {
+            Copy-Item -Path $setup -Destination $latestInstallerPath -Force
+          }
+          if ($installerPath -ne $publicInstallerPath) {
+            Copy-Item -Path $setup -Destination $publicInstallerPath -Force
+          }
+          Get-FileHash -Algorithm SHA256 $installerPath |
+            ForEach-Object { $_.Hash } |
+            Set-Content -Path "$installerPath.sha256" -Encoding ASCII
+          if ("$installerPath.sha256" -ne "$latestInstallerPath.sha256") {
+            Copy-Item -Path "$installerPath.sha256" -Destination "$latestInstallerPath.sha256" -Force
+          }
+          if ("$installerPath.sha256" -ne "$publicInstallerPath.sha256") {
+            Copy-Item -Path "$installerPath.sha256" -Destination "$publicInstallerPath.sha256" -Force
+          }
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: $(Build.ArtifactStagingDirectory)\agent
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: $(Build.ArtifactStagingDirectory)\$(agentPackageFileName)
+        replaceExistingArchive: true
+    - pwsh: |
+        $packagePath = "$(Build.ArtifactStagingDirectory)\$(agentPackageFileName)"
+        $packageHash = (Get-FileHash -Algorithm SHA256 $packagePath).Hash
+        Set-Content -Path "$packagePath.sha256" -Value $packageHash -Encoding ASCII
+
+        $manifestPath = "$(Build.ArtifactStagingDirectory)\agent-update.json"
+        $manifest = [ordered]@{
+          version = "$(agentVersion)"
+          packageUrl = "$(agentUpdateFeedUrl)/$(agentPackageLatestFileName)"
+          packageSha256 = $packageHash
+          packageSha256Url = "$(agentUpdateFeedUrl)/$(agentPackageLatestFileName).sha256"
+          installerUrl = "$(agentUpdateFeedUrl)/$(agentInstallerLatestFileName)"
+          installerSha256Url = "$(agentUpdateFeedUrl)/$(agentInstallerLatestFileName).sha256"
+          publishedAtUtc = [DateTime]::UtcNow.ToString("o")
+        } | ConvertTo-Json -Depth 10
+        Set-Content -Path $manifestPath -Value $manifest -Encoding UTF8
+      displayName: Generate signed legacy update manifest
+    - publish: $(Build.ArtifactStagingDirectory)\$(agentPackageFileName)
+      artifact: pulsecheck-agent
+    - publish: $(Build.ArtifactStagingDirectory)\$(agentInstallerFileName)
+      artifact: pulsecheck-agent-installer
+    - publish: $(Build.ArtifactStagingDirectory)\releases
+      artifact: pulsecheck-agent-releases
+    - publish: $(Build.ArtifactStagingDirectory)\agent-update.json
+      artifact: pulsecheck-agent-update-manifest
+    - task: AzureCLI@2
+      displayName: Upload agent package
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentPackageFileName)" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentPackageFileName)" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentPackageLatestFileName)" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentPackageFileName)" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentPackageLatestFileName).sha256" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentPackageFileName).sha256" `
+            --overwrite `
+            --auth-mode login
+    - task: AzureCLI@2
+      displayName: Upload agent update feed and installer
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          az storage blob upload-batch `
+            --account-name "$(storageAccountName)" `
+            --destination "$(agentPackagesContainerName)" `
+            --source "$(Build.ArtifactStagingDirectory)\releases" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentInstallerFileName)" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentInstallerFileName)" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentInstallerLatestFileName)" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentInstallerFileName)" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentInstallerLatestFileName).sha256" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentInstallerLatestFileName).sha256" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentPublicInstallerFileName)" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentPublicInstallerFileName)" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "$(agentPublicInstallerFileName).sha256" `
+            --file "$(Build.ArtifactStagingDirectory)\$(agentPublicInstallerFileName).sha256" `
+            --overwrite `
+            --auth-mode login
+          az storage blob upload `
+            --account-name "$(storageAccountName)" `
+            --container-name "$(agentPackagesContainerName)" `
+            --name "agent-update.json" `
+            --file "$(Build.ArtifactStagingDirectory)\agent-update.json" `
+            --overwrite `
+            --auth-mode login

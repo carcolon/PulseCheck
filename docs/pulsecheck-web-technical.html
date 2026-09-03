@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseCheck Web · Documentacion tecnica</title>
+  <style>
+    :root {
+      --bg: #f4fafc;
+      --card: #ffffff;
+      --ink: #143247;
+      --muted: #607c90;
+      --line: #cfe1ec;
+      --accent: #0597b5;
+      --accent-soft: #e0f6fa;
+      --shadow: 0 18px 42px rgba(20, 50, 71, 0.08);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: linear-gradient(180deg, #edf8fb 0%, #f7fbfd 100%); color: var(--ink); }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+    .hero, .section { background: var(--card); border: 1px solid var(--line); border-radius: 32px; box-shadow: var(--shadow); padding: 28px 30px; margin-bottom: 22px; }
+    .eyebrow { display: inline-block; font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 8px 12px; margin-bottom: 16px; }
+    h1 { margin: 0 0 10px; font-size: 40px; line-height: 1.08; }
+    h2 { margin: 0 0 16px; font-size: 28px; }
+    h3 { margin: 0 0 12px; font-size: 20px; }
+    p, li { color: var(--muted); line-height: 1.65; font-size: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .mini { border: 1px solid var(--line); border-radius: 22px; padding: 18px; background: #fbfeff; }
+    .badge { display: inline-block; padding: 8px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-top: 1px solid var(--line); padding: 12px 10px; text-align: left; vertical-align: top; font-size: 15px; }
+    th { color: var(--ink); font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; }
+    pre { margin: 0; padding: 16px; color: #36586e; overflow: auto; line-height: 1.5; font-size: 14px; border: 1px solid var(--line); border-radius: 16px; background: #f5fbfd; font-family: Consolas, "Courier New", monospace; }
+    .diagram { background: #f9fdff; border: 1px solid var(--line); border-radius: 24px; padding: 18px; }
+    .callout { border: 1px solid #d7e7ee; background: #f7fcfe; border-radius: 20px; padding: 16px 18px; color: #4f7387; }
+    .footer-links a { color: var(--accent); text-decoration: none; }
+    @media (max-width: 960px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Repositorio 2 de 3</div>
+      <h1>PulseCheck Web · Documentacion tecnica</h1>
+      <p>Este repositorio implementa la experiencia administrativa y el landing de PulseCheck. La aplicacion se construye con React y Vite, se despliega en Azure Static Web App y consume la API del backend para autenticacion, administradores, campañas, dispositivos, actividad y tableros.</p>
+    </section>
+
+    <section class="section">
+      <h2>1. Objetivo del repositorio</h2>
+      <div class="grid-3">
+        <div class="mini">
+          <div class="badge">Landing</div>
+          <p>Explica el posicionamiento del producto, descarga del agente y acceso administrativo.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Backoffice</div>
+          <p>Permite administrar campañas, usuarios admin, dispositivos, actividad y respuestas.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Tiempo real</div>
+          <p>Recibe eventos por SignalR y actualiza el panel sin depender solo de refresh manual.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Arquitectura de frontend</h2>
+      <div class="grid-2">
+        <div class="diagram">
+<pre>PulseCheck-web
+├─ src/App.tsx
+├─ src/components
+├─ src/views
+├─ src/hooks
+├─ src/utils
+├─ src/types.ts
+└─ styles.css / assets</pre>
+        </div>
+        <div class="mini">
+          <h3>Patron de trabajo</h3>
+          <ul>
+            <li>React 19 + Vite.</li>
+            <li>Navegacion basada en tabs y rutas del admin.</li>
+            <li>Hooks de sesion y panel separan fetch, estado y tiempo real.</li>
+            <li>GSAP se usa para motion puntual en landing y loaders; no gobierna el estado de datos.</li>
+            <li>Recharts se usa para graficas del dashboard.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Flujo funcional del frontend</h2>
+      <div class="diagram">
+<pre>Usuario
+  |
+  +--> Landing (/)
+  |      |
+  |      +--> descarga del agente
+  |      +--> acceso admin
+  |
+  +--> Login (/login)
+  |      |
+  |      +--> login local o Entra
+  |
+  +--> Admin (/admin/:tab)
+         |
+         +--> Resumen
+         +--> Campañas
+         +--> Agentes
+         +--> Actividad
+         +--> Insights
+         +--> Admins
+         +--> Configuracion</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>4. Rutas y modulos principales</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Ruta / modulo</th>
+            <th>Uso</th>
+            <th>Dependencias principales</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>/</code></td>
+            <td>Landing comercial y descarga del agente</td>
+            <td>CTA de descarga con <code>VITE_AGENT_DOWNLOAD_URL</code>, motion GSAP, bloques de producto.</td>
+          </tr>
+          <tr>
+            <td><code>/login</code></td>
+            <td>Acceso administrativo</td>
+            <td>Login local y flujo Entra ID.</td>
+          </tr>
+          <tr>
+            <td><code>/auth/callback</code></td>
+            <td>Retorno de Entra</td>
+            <td>Procesa redirect y materializa sesion del panel.</td>
+          </tr>
+          <tr>
+            <td><code>/admin/overview</code></td>
+            <td>Centro de decisiones operativas</td>
+            <td><code>/api/dashboard/overview</code>, graficas y alertas.</td>
+          </tr>
+          <tr>
+            <td><code>/admin/campaigns</code></td>
+            <td>Creacion y edicion de campañas</td>
+            <td>CRUD, preguntas tipo escala, texto y si/no, frecuencia en lenguaje humano.</td>
+          </tr>
+          <tr>
+            <td><code>/admin/agents</code></td>
+            <td>Inventario de dispositivos</td>
+            <td>Lista de agentes registrados y estado de conexion.</td>
+          </tr>
+          <tr>
+            <td><code>/admin/activity</code></td>
+            <td>Actividad por usuario/dispositivo</td>
+            <td>Eventos de lock, unlock, suspend y resume en tiempo real.</td>
+          </tr>
+          <tr>
+            <td><code>/admin/responses</code></td>
+            <td>Insights y exportes</td>
+            <td>Lista de respuestas recientes. Las respuestas de escala muestran valor y rango, por ejemplo <code>5 en escala 1-10</code>.</td>
+          </tr>
+          <tr>
+            <td><code>/admin/admins</code></td>
+            <td>Gestion de administradores</td>
+            <td>Lista, crea y elimina admins autorizados para ingreso con Entra ID.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. Integracion con backend</h2>
+      <div class="grid-2">
+        <div class="mini">
+          <h3>HTTP</h3>
+          <ul>
+            <li>Autenticacion y sesion administrativa.</li>
+            <li>Alta y baja de admins Entra autorizados.</li>
+            <li>Consulta y edicion de campañas.</li>
+            <li>Inventario de dispositivos, respuestas, dashboard y exportes.</li>
+          </ul>
+        </div>
+        <div class="mini">
+          <h3>SignalR</h3>
+          <ul>
+            <li>Actualiza actividad del agente en tiempo real.</li>
+            <li>Actualiza tablero administrativo sin esperar polling completo.</li>
+            <li>El polling de respaldo sigue existiendo como red de seguridad operativa.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">
+        El frontend no calcula semantica sensible de negocio si el backend ya entrega un contrato resuelto. El caso principal es el overview del dashboard, cuya logica de estado se movio al backend para evitar inferencias inconsistentes.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>6. Diseno operativo de la experiencia</h2>
+      <div class="grid-3">
+        <div class="mini">
+          <div class="badge">No tecnico</div>
+          <p>Las reglas de programacion de campañas se traducen a lenguaje humano en la interfaz; no se expone la sintaxis tecnica cruda al usuario final.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Responsive</div>
+          <p>Landing, login, shell administrativa y tabs principales ya fueron adaptados para movil y tablet con colapso de columnas y scroll horizontal controlado.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Tiempo real</div>
+          <p>La vista de actividad del agente se rediseño para mostrar usuarios con actividad detectada, filtros y detalle por usuario en vez de una lista plana de eventos.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>7. Variables y despliegue</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Uso</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>VITE_API_BASE_URL</code></td>
+            <td>Base URL de la API backend.</td>
+          </tr>
+          <tr>
+            <td><code>VITE_AGENT_DOWNLOAD_URL</code></td>
+            <td>URL publica estable del instalador del agente.</td>
+          </tr>
+          <tr>
+            <td><code>VITE_ENTRA_TENANT_ID</code>, <code>VITE_ENTRA_CLIENT_ID</code>, <code>VITE_ENTRA_API_CLIENT_ID</code></td>
+            <td>Integracion del login federado con Entra.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>El pipeline <code>azure-pipelines-web.yml</code> compila con Node 20 y despliega a Azure Static Web App. La aplicacion se entrega ya construida y no ejecuta server-side rendering.</p>
+    </section>
+
+    <section class="section">
+      <h2>8. Riesgos y limites vigentes</h2>
+      <ul>
+        <li>El bundle del frontend sigue siendo grande; la responsividad visual ya se mejoro, pero la carga movil todavia puede beneficiarse de code splitting adicional.</li>
+        <li>La UI depende de contratos consistentes del backend; cuando se introduce un nuevo tipo de dato en API, el web debe acompañarlo para no degradar la experiencia.</li>
+        <li>La vista de actividad usa datos del backend; si un agente no actualiza a la version que reporta telemetria extendida, no aparecera en detalle aunque exista como dispositivo registrado.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>9. Evidencia de referencia</h2>
+      <ul class="footer-links">
+        <li><a href="../PulseCheck-web/src/App.tsx">src/App.tsx</a></li>
+        <li><a href="../PulseCheck-web/azure-pipelines-web.yml">azure-pipelines-web.yml</a></li>
+        <li><a href="../PulseCheck-web/package.json">package.json</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

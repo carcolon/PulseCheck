@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseCheck Agent · Documentacion tecnica</title>
+  <style>
+    :root {
+      --bg: #f4fafc;
+      --card: #ffffff;
+      --ink: #143247;
+      --muted: #607c90;
+      --line: #cfe1ec;
+      --accent: #0597b5;
+      --accent-soft: #e0f6fa;
+      --warn-soft: #fff6ea;
+      --shadow: 0 18px 42px rgba(20, 50, 71, 0.08);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: linear-gradient(180deg, #edf8fb 0%, #f7fbfd 100%); color: var(--ink); }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+    .hero, .section { background: var(--card); border: 1px solid var(--line); border-radius: 32px; box-shadow: var(--shadow); padding: 28px 30px; margin-bottom: 22px; }
+    .eyebrow { display: inline-block; font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 8px 12px; margin-bottom: 16px; }
+    h1 { margin: 0 0 10px; font-size: 40px; line-height: 1.08; }
+    h2 { margin: 0 0 16px; font-size: 28px; }
+    h3 { margin: 0 0 12px; font-size: 20px; }
+    p, li { color: var(--muted); line-height: 1.65; font-size: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .mini { border: 1px solid var(--line); border-radius: 22px; padding: 18px; background: #fbfeff; }
+    .badge { display: inline-block; padding: 8px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-top: 1px solid var(--line); padding: 12px 10px; text-align: left; vertical-align: top; font-size: 15px; }
+    th { color: var(--ink); font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; }
+    pre { margin: 0; padding: 16px; color: #36586e; overflow: auto; line-height: 1.5; font-size: 14px; border: 1px solid var(--line); border-radius: 16px; background: #f5fbfd; font-family: Consolas, "Courier New", monospace; }
+    .diagram { background: #f9fdff; border: 1px solid var(--line); border-radius: 24px; padding: 18px; }
+    .callout { border: 1px solid #f3dbbf; background: var(--warn-soft); border-radius: 20px; padding: 16px 18px; color: #7b5d3f; }
+    .footer-links a { color: var(--accent); text-decoration: none; }
+    @media (max-width: 960px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Repositorio 3 de 3</div>
+      <h1>PulseCheck Agent · Documentacion tecnica</h1>
+      <p>Este repositorio contiene el agente Windows que ejecuta PulseCheck en el endpoint del colaborador. El agente sincroniza campañas, muestra prompts interactivos, envía respuestas, reporta actividad de bloqueo/suspension y se actualiza automaticamente mediante feed de releases.</p>
+    </section>
+
+    <section class="section">
+      <h2>1. Objetivo del agente</h2>
+      <div class="grid-3">
+        <div class="mini">
+          <div class="badge">Captura</div>
+          <p>Muestra preguntas en el escritorio del usuario y permite respuestas tipo escala, texto y si/no.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Operacion</div>
+          <p>Sincroniza campañas activas, reglas de entrega, estado de dispositivo y delivery logs con el backend.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Telemetria</div>
+          <p>Reporta eventos de lock, unlock, suspension y reanudacion con heuristica de inactividad previa.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Arquitectura actual del proceso</h2>
+      <div class="grid-2">
+        <div class="diagram">
+<pre>PulseCheck.Agent (WinExe)
+├─ HostBuilder
+│  ├─ Worker
+│  ├─ CampaignNotificationListener
+│  ├─ SessionActivityMonitorService
+│  └─ AutoUpdateService
+├─ WindowsPromptService
+├─ PulseCheckApiClient
+├─ LocalQueueStore
+├─ LocalAgentStateStore
+└─ TrayAgentApplicationContext</pre>
+        </div>
+        <div class="mini">
+          <h3>Modelo actual</h3>
+          <ul>
+            <li>El agente sigue siendo un solo proceso con UI de tray y servicios de fondo en la misma aplicacion.</li>
+            <li>No es todavia un Windows Service separado.</li>
+            <li>Usa <code>VelopackApp.Build().Run()</code> para compatibilidad con auto update.</li>
+            <li>Protege instancia unica con mutex de proceso.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Flujo operativo del agente</h2>
+      <div class="diagram">
+<pre>Inicio del agente
+   |
+   +--> carga appsettings.runtime.json
+   +--> resuelve identidad del endpoint
+   +--> arranca servicios de fondo
+   +--> abre tray context
+
+Loop operativo
+   |
+   +--> register / sync con API
+   +--> recibe campañas activas
+   +--> valida horario y reglas de entrega
+   +--> muestra popup si corresponde
+   +--> captura respuesta
+   +--> envia respuesta y delivery log
+   +--> escucha SignalR y polling
+   +--> revisa feed de auto update</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>4. Componentes clave</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Componente</th>
+            <th>Funcion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Worker</code></td>
+            <td>Loop principal de sincronizacion, orquestacion de campañas, prompts, cola local y envio al backend.</td>
+          </tr>
+          <tr>
+            <td><code>WindowsPromptService</code></td>
+            <td>Popup WinForms para escala, texto y si/no. Si la campaña exige respuesta, fuerza visibilidad sobre apps normales de escritorio.</td>
+          </tr>
+          <tr>
+            <td><code>CampaignNotificationListener</code></td>
+            <td>Escucha hub de notificaciones para despertar el loop sin depender solo de polling.</td>
+          </tr>
+          <tr>
+            <td><code>SessionActivityMonitorService</code></td>
+            <td>Escucha <code>SessionLock</code>, <code>SessionUnlock</code>, <code>Suspend</code> y <code>Resume</code>; calcula inactividad y duracion.</td>
+          </tr>
+          <tr>
+            <td><code>AutoUpdateService</code></td>
+            <td>Consume feed Velopack; si la instalacion no es Velopack managed, usa un fallback legacy con manifiesto JSON y ZIP.</td>
+          </tr>
+          <tr>
+            <td><code>TrayAgentApplicationContext</code></td>
+            <td>Context menu, estado rapido, apertura de carpeta de datos y señal visible de version/canal.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. Datos locales y estado</h2>
+      <div class="grid-2">
+        <div class="mini">
+          <h3>Archivos locales</h3>
+          <ul>
+            <li><code>appsettings.runtime.json</code>: override empaquetado por pipeline.</li>
+            <li><code>agent-state.json</code>: estado local persistido.</li>
+            <li>cola local de respuestas pendientes para tolerar fallos transitorios.</li>
+            <li>logs locales accesibles desde el tray.</li>
+          </ul>
+        </div>
+        <div class="mini">
+          <h3>Estado de runtime</h3>
+          <ul>
+            <li><code>AgentRuntimeState</code> mantiene el resumen visible actual del proceso.</li>
+            <li>Estados visibles como <em>En linea</em>, <em>Sincronizado</em>, <em>Esperando respuesta</em>, <em>En segundo plano</em>.</li>
+            <li>Ese estado es de proceso actual; no reemplaza una consola de administracion central.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>6. Auto update</h2>
+      <div class="grid-2">
+        <div class="diagram">
+<pre>Pipeline build
+   |
+   +--> dotnet publish
+   +--> vpk pack
+   +--> releases.win.json
+   +--> *.nupkg
+   +--> Setup.exe estable
+   +--> agent-update.json
+   |
+Azure Blob Storage
+   |
+   +--> agente consulta feed
+   +--> descarga nueva version
+   +--> aplica update
+   +--> reinicia</pre>
+        </div>
+        <div class="mini">
+          <h3>Consideraciones</h3>
+          <ul>
+            <li>El feed de update se aloja en Blob Storage con URL estable y accesible.</li>
+            <li>En dev el intervalo de chequeo se redujo a 5 minutos para pruebas.</li>
+            <li>El instalador estable para descarga publica es <code>PulseCheck.Agent.Setup-dev.exe</code>.</li>
+            <li>El instalador no se genera con <code>dotnet-install</code>; el pipeline usa <code>UseDotNet@2</code> para preparar SDKs y <code>vpk pack</code> para crear el setup.</li>
+            <li>La validacion real del update se hace observando el cambio de version en el tray y los logs del agente.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>7. Deteccion de inactividad, bloqueo y suspension</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Evento</th>
+            <th>Origen</th>
+            <th>Dato reportado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>SessionLock</code></td>
+            <td><code>SystemEvents.SessionSwitch</code></td>
+            <td>Segundos de inactividad al bloquear y clasificacion heuristica <code>ManualLock</code> o <code>AutoLock</code>.</td>
+          </tr>
+          <tr>
+            <td><code>SessionUnlock</code></td>
+            <td><code>SystemEvents.SessionSwitch</code></td>
+            <td>Duracion del bloqueo.</td>
+          </tr>
+          <tr>
+            <td><code>DeviceSuspended</code></td>
+            <td><code>SystemEvents.PowerModeChanged</code></td>
+            <td>Idle previo a suspension.</td>
+          </tr>
+          <tr>
+            <td><code>DeviceResumed</code></td>
+            <td><code>SystemEvents.PowerModeChanged</code></td>
+            <td>Duracion de suspension.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        La deteccion de tapa cerrada no existe como evento de alto nivel en Windows para este modelo. La aproximacion implementada es detectar suspension y reanudacion, que cubre el caso normal de cierre de tapa en portatil.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>8. Pipeline y artefactos</h2>
+      <div class="grid-3">
+        <div class="mini">
+          <div class="badge">Build</div>
+          <p>El pipeline usa .NET 8 y .NET 9, publica el binario self-contained para Windows x64 y genera <code>appsettings.runtime.json</code> empaquetado.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Release</div>
+          <p>Velopack genera <code>releases.win.json</code>, paquetes <code>.nupkg</code>, instalador <code>.exe</code>, ZIP portable y manifiesto auxiliar.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Distribucion</div>
+          <p>Los artefactos se suben a un contenedor Blob de Azure. El pipeline del agente corre automaticamente en cambios de la rama <code>dev</code>.</p>
+        </div>
+      </div>
+      <div class="callout">
+        El ejecutable principal es <code>PulseCheck.Agent.exe</code>: un ejecutable Windows x64 de escritorio generado por .NET como <code>WinExe</code> para <code>net8.0-windows</code>. El archivo de instalacion entregado al usuario es <code>PulseCheck.Agent.Setup-*.exe</code>, un instalador/bootstrapper Windows generado por Velopack.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>9. Riesgos y limites vigentes</h2>
+      <ul>
+        <li>La arquitectura actual sigue siendo single-process con tray e interaccion de usuario en el mismo ejecutable.</li>
+        <li>No hay aun separacion formal en Windows Service + companion UI.</li>
+        <li>El prompt obligatorio puede reimponerse sobre apps normales, pero no puede sobreponerse al lock screen, UAC secure desktop ni algunos fullscreen exclusivos.</li>
+        <li>El control de cierre o desinstalacion solo puede endurecerse plenamente con una migracion a servicio Windows e instalacion per-machine administrada por TI.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>10. Evidencia de referencia</h2>
+      <ul class="footer-links">
+        <li><a href="../PulseCheck-agent/PulseCheck.Agent/Program.cs">PulseCheck.Agent/Program.cs</a></li>
+        <li><a href="../PulseCheck-agent/PulseCheck.Agent/Worker.cs">PulseCheck.Agent/Worker.cs</a></li>
+        <li><a href="../PulseCheck-agent/PulseCheck.Agent/AutoUpdateService.cs">PulseCheck.Agent/AutoUpdateService.cs</a></li>
+        <li><a href="../PulseCheck-agent/PulseCheck.Agent/SessionActivityMonitorService.cs">PulseCheck.Agent/SessionActivityMonitorService.cs</a></li>
+        <li><a href="../PulseCheck-agent/azure-pipelines-agent.yml">azure-pipelines-agent.yml</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

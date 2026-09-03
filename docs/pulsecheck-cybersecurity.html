@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseCheck - Ciberseguridad implementada</title>
+  <style>
+    :root {
+      --bg: #f4fafc;
+      --card: #ffffff;
+      --ink: #143247;
+      --muted: #607c90;
+      --line: #cfe1ec;
+      --accent: #0597b5;
+      --accent-soft: #e0f6fa;
+      --ok-soft: #edf9f5;
+      --shadow: 0 18px 42px rgba(20, 50, 71, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: linear-gradient(180deg, #edf8fb 0%, #f7fbfd 100%); color: var(--ink); }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 40px 24px 80px; }
+    .hero, .section { background: var(--card); border: 1px solid var(--line); border-radius: 32px; box-shadow: var(--shadow); padding: 28px 30px; margin-bottom: 22px; }
+    .eyebrow { display: inline-block; font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 8px 12px; margin-bottom: 16px; }
+    h1 { margin: 0 0 10px; font-size: 40px; line-height: 1.08; }
+    h2 { margin: 0 0 16px; font-size: 28px; }
+    h3 { margin: 0 0 12px; font-size: 20px; }
+    p, li { color: var(--muted); line-height: 1.65; font-size: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .mini { border: 1px solid var(--line); border-radius: 22px; padding: 18px; background: #fbfeff; }
+    .badge { display: inline-block; padding: 8px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 12px; }
+    .status-ok { display: inline-block; padding: 6px 10px; border-radius: 999px; background: var(--ok-soft); color: #2b7c62; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-top: 1px solid var(--line); padding: 12px 10px; text-align: left; vertical-align: top; font-size: 15px; }
+    th { color: var(--ink); font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; }
+    code, pre { font-family: Consolas, "Courier New", monospace; background: #f5fbfd; border: 1px solid var(--line); border-radius: 16px; }
+    pre { margin: 0; padding: 16px; color: #36586e; overflow: auto; line-height: 1.5; font-size: 14px; }
+    .diagram { background: #f9fdff; border: 1px solid var(--line); border-radius: 24px; padding: 18px; }
+    .callout { border: 1px solid #d7e7ee; background: #f7fcfe; border-radius: 20px; padding: 16px 18px; color: #4f7387; }
+    .footer-links a { color: var(--accent); text-decoration: none; }
+    @media (max-width: 1080px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Ciberseguridad</div>
+      <h1>PulseCheck - Controles de seguridad implementados</h1>
+      <p>Este documento describe unicamente los controles que PulseCheck tiene implementados en codigo, configuracion, infraestructura declarada o pipeline. El mapeo toma como referencia el documento <em>Information Security Baseline Requirements for New Deployments</em> y agrupa la evidencia por familias de control aplicables a la solucion.</p>
+    </section>
+
+    <section class="section">
+      <h2>1. Alcance evaluado</h2>
+      <div class="grid-3">
+        <div class="mini">
+          <div class="badge">Componentes</div>
+          <p>Panel React, API ASP.NET Core, agente Windows, Azure SQL, SignalR, Azure Static Web Apps, App Service, Application Insights, pipelines y feed de actualizacion.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Baseline</div>
+          <p>Se consideraron las familias de GRC, IAM, criptografia, logging, vulnerabilidades, Secure SDLC, cloud deployment, endpoints y requisitos especificos de API.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Criterio</div>
+          <p>Solo se documenta como control vigente aquello que puede observarse en los repositorios, scripts, reportes locales, Bicep, pipelines o comportamiento de la aplicacion.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Arquitectura de seguridad vigente</h2>
+      <div class="grid-4">
+        <div class="mini">
+          <div class="badge">Cliente admin</div>
+          <p>Browser corporativo que entra al panel React y obtiene acceso por Microsoft Entra ID.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Frontend</div>
+          <p>Azure Static Web App publica el bundle de PulseCheck Web y consume la API con bearer administrativo.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Backend</div>
+          <p>Azure App Service aloja ASP.NET Core, controllers, hubs SignalR y validaciones de seguridad.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Datos</div>
+          <p>Azure SQL persiste campañas, respuestas, dispositivos, sesiones, admins y trazabilidad operativa.</p>
+        </div>
+      </div>
+      <div class="diagram">
+<pre>Usuario Admin
+   |
+   | HTTPS + Microsoft Entra ID + sesion AdminBearer
+   v
+Azure Static Web App (PulseCheck Web)
+   |
+   | HTTPS + Authorization: Bearer
+   v
+Azure App Service (PulseCheck API)
+   |\
+   | \__ SignalR admin hub protegido con AdminBearer
+   |
+   +----> Azure SQL Database
+   |
+   +----> Application Insights
+   |
+Agente Windows
+   |
+   | HTTPS register / sync / responses / delivery-logs / activity-events
+   v
+PulseCheck API
+   |
+   +----> Azure Blob Storage para feed de actualizacion</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Diagrama C4 - Contexto</h2>
+      <div class="diagram">
+<pre>+-------------------+          +-----------------------------+
+| Usuario Admin    |          | Microsoft Entra ID          |
+| People/Ops/IT    |          | Tenant corporativo          |
++---------+---------+          +--------------+--------------+
+          |                                   ^
+          | HTTPS                             | OIDC/OAuth2 token validation
+          v                                   |
++---------+-----------------------------------+--------------+
+| PulseCheck Web - Azure Static Web App                     |
+| Landing, login, dashboard admin, campañas, insights, admins|
++---------+--------------------------------------------------+
+          |
+          | HTTPS + AdminBearer
+          v
++---------+--------------------------------------------------+
+| PulseCheck API - Azure App Service                        |
+| Auth, admin users, campaigns, dashboard, responses, hubs   |
++---------+----------------------+---------------------------+
+          |                      |
+          | EF Core              | Telemetria
+          v                      v
++---------+---------+    +-------+----------------+
+| Azure SQL         |    | Application Insights   |
+| Datos operativos  |    | Logs y metricas API    |
++-------------------+    +------------------------+
+
++-------------------+          HTTPS sync/responses/activity
+| Agente Windows    +----------------------------------------+
+| Endpoint usuario  |                                        |
++-------------------+                                        |
+          ^                                                   |
+          | Azure Blob feed                                   |
+          +---------------------------------------------------+</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>4. Diagrama de contenedores</h2>
+      <div class="diagram">
+<pre>PulseCheck
+|
++-- PulseCheck-web
+|   +-- React 19 + Vite
+|   +-- useAdminSession: login, restore, logout
+|   +-- useAdminPanel: fetch admin data + SignalR
+|   +-- Views: Overview, Campaigns, Agents, Activity, Responses, Admins, Settings
+|
++-- PulseCheck-api
+|   +-- PulseCheck.Api: controllers, hubs, auth handler, rate limiting
+|   +-- PulseCheck.Application: DTOs, services, validation, report data
+|   +-- PulseCheck.Infrastructure: EF Core, DbContext, UnitOfWork, initializer
+|   +-- PulseCheck.Domain: entities and enums
+|
++-- PulseCheck-agent
+|   +-- Worker: sync loop and campaign execution
+|   +-- WindowsPromptService: popup UI
+|   +-- PulseCheckApiClient: API calls
+|   +-- SessionActivityMonitorService: lock/unlock/suspend/resume
+|   +-- AutoUpdateService: Velopack/feed update
+|
++-- Azure resources
+    +-- Static Web App
+    +-- App Service
+    +-- Azure SQL Database
+    +-- Application Insights
+    +-- Blob Storage feed for agent releases</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>5. Flujo de autenticacion administrativa</h2>
+      <div class="diagram">
+<pre>Admin abre /login
+   |
+   v
+PulseCheck Web inicia flujo Microsoft
+   |
+   v
+Microsoft Entra ID autentica usuario corporativo
+   |
+   v
+Web recibe access token para API
+   |
+   v
+POST /api/auth/entra
+   |
+   +--> EntraAccessTokenValidator
+   |       - valida issuer
+   |       - valida audience
+   |       - valida firma
+   |       - valida lifetime
+   |       - valida scope access_as_user
+   |
+   +--> AdminAuthService
+           - normaliza email
+           - busca AdminUsers
+           - exige AuthenticationMode=Entra
+           - exige IsActive=true
+           - actualiza displayName/objectId/tenantId
+           - crea AdminSession con TokenHash
+   |
+   v
+Web usa AdminBearer en endpoints protegidos</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>6. Flujo de autorizacion y sesion admin</h2>
+      <div class="diagram">
+<pre>Request admin
+   |
+   | Authorization: Bearer &lt;token&gt;
+   v
+AdminTokenAuthenticationHandler
+   |
+   +-- calcula hash del token
+   +-- busca AdminSessions por TokenHash
+   +-- valida RevokedAtUtc == null
+   +-- valida ExpiresAtUtc &gt; now
+   +-- valida AdminUser.IsActive
+   +-- genera claims:
+       - NameIdentifier = AdminUser.Id
+       - Email = AdminUser.Email
+       - Name = AdminUser.DisplayName
+       - Role = Admin
+   |
+   v
+[Authorize(AuthenticationSchemes = AdminBearer)]
+   |
+   v
+Controller protegido ejecuta accion</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>7. Superficie de API y controles</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Superficie</th>
+            <th>Endpoints</th>
+            <th>Control aplicado</th>
+            <th>Uso</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Auth admin</td>
+            <td><code>/api/auth/login</code>, <code>/api/auth/entra</code>, <code>/api/auth/session</code>, <code>/api/auth/logout</code></td>
+            <td>Rate limit <code>auth</code>, validacion Entra, sesion hash, logout revoca sesion.</td>
+            <td>Acceso y continuidad de sesion administrativa.</td>
+          </tr>
+          <tr>
+            <td>Admin API</td>
+            <td><code>/api/campaigns</code>, <code>/api/dashboard/*</code>, <code>/api/devices</code>, <code>/api/responses/recent</code>, <code>/api/admin-users</code></td>
+            <td><code>AdminBearer</code>, rate limit <code>admin-api</code>, CORS por origen permitido.</td>
+            <td>Operacion del panel administrativo.</td>
+          </tr>
+          <tr>
+            <td>SignalR admin</td>
+            <td><code>/hubs/admin-notifications</code></td>
+            <td><code>AdminBearer</code> en hub y rate limit.</td>
+            <td>Eventos de campañas, respuestas, agentes y actividad en tiempo real.</td>
+          </tr>
+          <tr>
+            <td>Agente</td>
+            <td><code>/api/agent/register</code>, <code>/api/agent/sync</code>, <code>/api/responses</code>, <code>/api/delivery-logs</code>, <code>/api/agent/activity-events</code></td>
+            <td>Validacion de contratos, validacion de campaña/pregunta, rangos numericos y texto plano.</td>
+            <td>Registro, sync, respuesta, trazabilidad de entrega y actividad del endpoint.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>8. Flujo de alta y baja de administradores</h2>
+      <div class="diagram">
+<pre>Admin autenticado abre tab Admins
+   |
+   +-- GET /api/admin-users
+   |      |
+   |      +-- AdminUserService lista AdminUsers ordenados por estado/email
+   |
+   +-- Crear admin
+   |      |
+   |      +-- POST /api/admin-users { email }
+   |      +-- normaliza email
+   |      +-- crea/rehabilita usuario:
+   |          AuthenticationMode = Entra
+   |          IsActive = true
+   |          PasswordHash = ""
+   |
+   +-- Eliminar admin
+          |
+          +-- DELETE /api/admin-users/{id}
+          +-- valida que no sea el propio admin
+          +-- valida que no sea el ultimo admin activo
+          +-- elimina registro y sesiones asociadas por cascade</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>9. Flujo de campaña y respuesta</h2>
+      <div class="diagram">
+<pre>Admin crea campaña
+   |
+   +-- Web CampaignsTab
+   +-- POST /api/campaigns
+   +-- PulseCheckService normaliza:
+       - nombre
+       - audiencia
+       - scheduleRule
+       - preguntas
+       - placeholder
+       - texto plano sin HTML/script
+   |
+   v
+Campaign guardada en Azure SQL
+   |
+   +-- SignalR campaignCreated/campaignUpdated
+   |
+Agente sincroniza /api/agent/sync
+   |
+   +-- recibe campañas activas
+   +-- evalua schedule y ventana
+   +-- muestra popup
+   |
+Usuario responde
+   |
+   +-- /api/responses valida:
+       - campaña existe
+       - pregunta existe
+       - escala dentro de min/max
+       - texto plano si aplica
+   |
+   +-- guarda PulseResponse
+   +-- publica responseReceived
+   +-- Insights muestra respuesta y escala
+   +-- Excel exporta escala y respuesta</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>10. Flujo de actividad de endpoint</h2>
+      <div class="diagram">
+<pre>Windows endpoint
+   |
+   +-- SystemEvents.SessionSwitch
+   |      +-- SessionLocked
+   |      +-- SessionUnlocked
+   |
+   +-- SystemEvents.PowerModeChanged
+          +-- DeviceSuspended
+          +-- DeviceResumed
+   |
+   v
+SessionActivityMonitorService
+   |
+   +-- calcula idle previo
+   +-- calcula duracion de bloqueo/suspension
+   +-- clasifica razon heuristica
+   |
+   v
+POST /api/agent/activity-events
+   |
+   v
+AgentActivityEvents en Azure SQL
+   |
+   v
+SignalR agentActivityReceived
+   |
+   v
+Vista Actividad en PulseCheck Web</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>11. Flujo de actualizacion del agente</h2>
+      <div class="diagram">
+<pre>Azure Pipeline Agent
+   |
+   +-- dotnet publish
+   +-- Velopack pack
+   +-- genera releases.win.json
+   +-- genera paquetes .nupkg
+   +-- genera setup estable
+   |
+   v
+Azure Blob Storage
+   |
+   +-- feed de update
+   +-- instalador descargable
+   |
+Agente Windows
+   |
+   +-- AutoUpdateService revisa feed
+   +-- descarga version disponible
+   +-- aplica update
+   +-- reinicia proceso
+   +-- reporta version en register/sync</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>12. Modelo de datos de seguridad y trazabilidad</h2>
+      <div class="diagram">
+<pre>AdminUsers
+   Id
+   Email
+   DisplayName
+   EntraObjectId
+   TenantId
+   AuthenticationMode
+   PasswordHash
+   IsActive
+   CreatedAtUtc
+   LastLoginAtUtc
+      |
+      | 1:N
+      v
+AdminSessions
+   Id
+   AdminUserId
+   TokenHash
+   UserAgent
+   IpAddress
+   CreatedAtUtc
+   ExpiresAtUtc
+   RevokedAtUtc
+
+Devices
+   DeviceId, Hostname, UserName, Email, Department, OS, AgentVersion, LastSeenAtUtc
+
+DeliveryLogs
+   CampaignId, DeviceId, UserId, Status, Error, RetryCount, PromptedAtUtc
+
+AgentActivityEvents
+   DeviceId, UserId, EventType, LockReason, IdleSecondsAtLock, DurationSeconds, OccurredAtUtc
+
+Responses
+   CampaignId, QuestionId, QuestionType, NumericValue, TextValue, SubmissionId, AnsweredAtUtc</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>13. Controles implementados por familia del baseline</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Familia del baseline</th>
+            <th>Estado</th>
+            <th>Control implementado en PulseCheck</th>
+            <th>Evidencia tecnica</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>IAM, PAM, RBAC/ABAC y autenticacion</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>El acceso administrativo requiere autenticacion corporativa con Microsoft Entra ID y autorizacion adicional contra <code>AdminUsers</code> en base de datos. Las sesiones administrativas se materializan como tokens aleatorios almacenados solo como hash en <code>AdminSessions</code>. En produccion el login local queda deshabilitado mediante <code>AllowLocalAdminLogin=false</code>.</td>
+            <td><code>AuthController</code>, <code>EntraAccessTokenValidator</code>, <code>AdminTokenAuthenticationHandler</code>, <code>AdminAuthService</code>, <code>AdminUsersController</code>, <code>appsettings.Production.json</code>.</td>
+          </tr>
+          <tr>
+            <td>Ciclo de vida de administradores</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>El panel incluye una vista de administradores para listar, crear y eliminar usuarios autorizados. La creacion exige solo correo; el registro se guarda como <code>AuthenticationMode=Entra</code>, <code>IsActive=true</code> y sin password local. El primer login Entra completa nombre, object id, tenant y ultimo ingreso.</td>
+            <td><code>AdminUserService</code>, <code>AdminUsersController</code>, <code>AdminsTab.tsx</code>, <code>useAdminPanel.ts</code>.</td>
+          </tr>
+          <tr>
+            <td>Autorizacion de endpoints administrativos</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>Los endpoints de campañas, dashboard, respuestas recientes, dispositivos, delivery logs administrativos, actividad administrativa y admin-users estan protegidos por <code>[Authorize(AuthenticationSchemes = AdminBearer)]</code>. El hub administrativo de SignalR tambien exige token admin.</td>
+            <td>Controllers de API, <code>AdminNotificationHub</code>, <code>Program.cs</code>.</td>
+          </tr>
+          <tr>
+            <td>API-specific requirements</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>La API aplica autenticacion bearer, CORS restringido por origen configurado, HTTPS redirection, rate limiting por politica para auth/admin-api y validaciones de entrada en operaciones sensibles.</td>
+            <td><code>Program.cs</code>, <code>CampaignsController</code>, <code>ResponsesController</code>, <code>PlainTextSecurity</code>.</td>
+          </tr>
+          <tr>
+            <td>Input validation y proteccion contra contenido no deseado</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>Las campañas y respuestas abiertas validan texto plano. Se rechaza HTML, entidades decodificadas con signos de markup, esquemas peligrosos como <code>javascript:</code> y handlers como <code>onclick=</code>. Las respuestas numericas se validan contra la escala definida de la pregunta.</td>
+            <td><code>PlainTextSecurity</code>, <code>PulseCheckService.SubmitResponseAsync</code>, normalizacion de preguntas de campaña.</td>
+          </tr>
+          <tr>
+            <td>Criptografia, certificados y transporte</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>La infraestructura de API exige HTTPS en App Service y TLS minimo 1.2. El backend tambien ejecuta <code>UseHttpsRedirection</code>. La validacion Entra usa metadatos OpenID Connect por HTTPS y valida issuer, audience, firma, lifetime y scope.</td>
+            <td><code>infra/main.bicep</code>, <code>Program.cs</code>, <code>EntraAccessTokenValidator</code>.</td>
+          </tr>
+          <tr>
+            <td>Inventario de activos y dispositivos</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>La tabla <code>Devices</code> mantiene inventario operativo de agentes con device id, hostname, usuario, correo, departamento, sistema operativo, version del agente y ultima vista. El panel muestra esta informacion en la vista de agentes.</td>
+            <td><code>Device</code>, <code>AgentController</code>, <code>DevicesController</code>, <code>AgentsTab.tsx</code>.</td>
+          </tr>
+          <tr>
+            <td>Logging, monitoreo y trazabilidad</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>PulseCheck registra delivery logs, respuestas, eventos de actividad del agente, sesiones administrativas, IP/user-agent de sesion y logs locales del agente. La infraestructura incluye Application Insights para telemetria de la API.</td>
+            <td><code>DeliveryLogs</code>, <code>AgentActivityEvents</code>, <code>AdminSessions</code>, <code>DiagnosticLog</code>, <code>infra/main.bicep</code>.</td>
+          </tr>
+          <tr>
+            <td>Vulnerability and patch management</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>El workspace incluye escaneo local para Semgrep, gitleaks, dependencias .NET vulnerables y npm audit. Tambien conserva reportes de severidad y resultados de ejecuciones previas.</td>
+            <td><code>scan-local.ps1</code>, <code>semgrep.yml</code>, <code>reports/</code>, <code>latest-*.json</code>.</td>
+          </tr>
+          <tr>
+            <td>Secure SDLC</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>La solucion separa dominio, aplicacion, infraestructura y API; el frontend separa vistas, hooks, tipos y utilidades; los pipelines compilan y publican artefactos por repositorio. Los cambios recientes fueron validados con build antes de push.</td>
+            <td><code>PulseCheck.slnx</code>, <code>package.json</code>, <code>azure-pipelines-*.yml</code>, estructura de carpetas.</td>
+          </tr>
+          <tr>
+            <td>Cloud deployment</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>La infraestructura principal esta declarada como codigo para Azure: Static Web App, App Service, Azure SQL, Application Insights y configuracion de app settings por entorno.</td>
+            <td><code>PulseCheck-api/infra/main.bicep</code>, pipelines de API, web y agente.</td>
+          </tr>
+          <tr>
+            <td>Endpoint agent controls</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>El agente usa mutex de instancia unica, cola local para resiliencia, logs locales, estado runtime visible, deteccion de lock/unlock/suspend/resume y auto-update por feed de release.</td>
+            <td><code>Worker</code>, <code>LocalQueueStore</code>, <code>SessionActivityMonitorService</code>, <code>AutoUpdateService</code>, <code>AgentRuntimeState</code>.</td>
+          </tr>
+          <tr>
+            <td>Data handling y exportes</td>
+            <td><span class="status-ok">Implementado</span></td>
+            <td>Las respuestas se guardan con tipo de pregunta, pregunta respondida, valor numerico o texto, usuario, equipo y submission id. El dashboard y el Excel muestran la escala asociada a respuestas numericas para preservar contexto de interpretacion.</td>
+            <td><code>PulseResponse</code>, <code>PulseResponseDto</code>, <code>PulseCheckExcelReportBuilder</code>, <code>ResponsesTab</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>14. Controles por superficie</h2>
+      <div class="grid-2">
+        <div class="mini">
+          <h3>Panel administrativo</h3>
+          <ul>
+            <li>Login corporativo con Microsoft Entra ID.</li>
+            <li>Autorizacion final en base de datos mediante <code>AdminUsers</code>.</li>
+            <li>Sesion administrativa con token bearer y expiracion server-side.</li>
+            <li>Logout con revocacion de sesion.</li>
+            <li>Vista de administradores para alta y baja controlada.</li>
+          </ul>
+        </div>
+        <div class="mini">
+          <h3>API y datos</h3>
+          <ul>
+            <li>Controllers administrativos protegidos con <code>AdminBearer</code>.</li>
+            <li>Rate limiting para autenticacion, API administrativa y hubs.</li>
+            <li>CORS configurado por origen permitido.</li>
+            <li>Validacion de texto plano en campañas y respuestas abiertas.</li>
+            <li>Exportes Excel generados server-side desde datos persistidos.</li>
+          </ul>
+        </div>
+        <div class="mini">
+          <h3>Agente Windows</h3>
+          <ul>
+            <li>Identidad operacional por dispositivo, usuario y hostname.</li>
+            <li>Cola local para reintentar respuestas cuando hay fallos transitorios.</li>
+            <li>Reporte de actividad de sesion y eventos de energia.</li>
+            <li>Auto-update con feed de paquetes versionados.</li>
+            <li>Logs diagnosticos locales.</li>
+          </ul>
+        </div>
+        <div class="mini">
+          <h3>Pipeline y evidencia</h3>
+          <ul>
+            <li>Repositorios separados para API, web y agente.</li>
+            <li>Build y despliegue por Azure Pipelines.</li>
+            <li>Infraestructura Azure declarada en Bicep.</li>
+            <li>Reportes locales de SAST/SCA/secret scanning.</li>
+            <li>Documentacion tecnica versionada en el workspace.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>

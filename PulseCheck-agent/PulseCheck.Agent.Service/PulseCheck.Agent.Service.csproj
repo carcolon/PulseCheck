@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>PulseCheck.Agent.Service</AssemblyName>
+    <RootNamespace>PulseCheck.Agent.Service</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.22" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Win32.SystemEvents" Version="8.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <PackageReference Include="Velopack" Version="0.0.1298" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\PulseCheck.Agent\AgentActivityQueueService.cs" Link="Shared\AgentActivityQueueService.cs" />
+    <Compile Include="..\PulseCheck.Agent\AgentActivityQueueStore.cs" Link="Shared\AgentActivityQueueStore.cs" />
+    <Compile Include="..\PulseCheck.Agent\AgentCredentialStore.cs" Link="Shared\AgentCredentialStore.cs" />
+    <Compile Include="..\PulseCheck.Agent\AgentIdentityResolver.cs" Link="Shared\AgentIdentityResolver.cs" />
+    <Compile Include="..\PulseCheck.Agent\AgentOptions.cs" Link="Shared\AgentOptions.cs" />
+    <Compile Include="..\PulseCheck.Agent\AgentRuntimeIdentity.cs" Link="Shared\AgentRuntimeIdentity.cs" />
+    <Compile Include="..\PulseCheck.Agent\AgentRuntimeState.cs" Link="Shared\AgentRuntimeState.cs" />
+    <Compile Include="..\PulseCheck.Agent\AgentStoragePaths.cs" Link="Shared\AgentStoragePaths.cs" />
+    <Compile Include="..\PulseCheck.Agent\AutoUpdateService.cs" Link="Shared\AutoUpdateService.cs" />
+    <Compile Include="..\PulseCheck.Agent\CampaignNotificationListener.cs" Link="Shared\CampaignNotificationListener.cs" />
+    <Compile Include="..\PulseCheck.Agent\DiagnosticLog.cs" Link="Shared\DiagnosticLog.cs" />
+    <Compile Include="..\PulseCheck.Agent\GlobalUsings.cs" Link="Shared\GlobalUsings.cs" />
+    <Compile Include="..\PulseCheck.Agent\ICampaignPromptService.cs" Link="Shared\ICampaignPromptService.cs" />
+    <Compile Include="..\PulseCheck.Agent\InteractiveUserIdentityStore.cs" Link="Shared\InteractiveUserIdentityStore.cs" />
+    <Compile Include="..\PulseCheck.Agent\LocalAgentStateStore.cs" Link="Shared\LocalAgentStateStore.cs" />
+    <Compile Include="..\PulseCheck.Agent\LocalQueueStore.cs" Link="Shared\LocalQueueStore.cs" />
+    <Compile Include="..\PulseCheck.Agent\Models.cs" Link="Shared\Models.cs" />
+    <Compile Include="..\PulseCheck.Agent\NamedPipeJsonTransport.cs" Link="Shared\NamedPipeJsonTransport.cs" />
+    <Compile Include="..\PulseCheck.Agent\PipeCampaignPromptService.cs" Link="Shared\PipeCampaignPromptService.cs" />
+    <Compile Include="..\PulseCheck.Agent\PromptPipeContracts.cs" Link="Shared\PromptPipeContracts.cs" />
+    <Compile Include="..\PulseCheck.Agent\PulseCheckApiClient.cs" Link="Shared\PulseCheckApiClient.cs" />
+    <Compile Include="..\PulseCheck.Agent\Scheduling.cs" Link="Shared\Scheduling.cs" />
+    <Compile Include="..\PulseCheck.Agent\SessionActivityMonitorService.cs" Link="Shared\SessionActivityMonitorService.cs" />
+    <Compile Include="..\PulseCheck.Agent\SyncWakeSignal.cs" Link="Shared\SyncWakeSignal.cs" />
+    <Compile Include="..\PulseCheck.Agent\Worker.cs" Link="Shared\Worker.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\PulseCheck.Agent\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\PulseCheck.Agent\appsettings.Development.json" Link="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\PulseCheck.Agent\appsettings.Production.json" Link="appsettings.Production.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

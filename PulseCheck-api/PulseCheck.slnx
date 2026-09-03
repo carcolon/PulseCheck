@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="PulseCheck.Api/PulseCheck.Api.csproj" />
+  <Project Path="PulseCheck.Application/PulseCheck.Application.csproj" />
+  <Project Path="PulseCheck.Domain/PulseCheck.Domain.csproj" />
+  <Project Path="PulseCheck.Infrastructure/PulseCheck.Infrastructure.csproj" />
+</Solution>
