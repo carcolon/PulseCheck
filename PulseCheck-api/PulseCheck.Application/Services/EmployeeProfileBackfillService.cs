@@ -65,7 +65,11 @@ public sealed class EmployeeProfileBackfillService(
         device.UserPrincipalName = ResolveValue(resolvedIdentity?.UserPrincipalName, device.UserPrincipalName);
         device.Department = ResolveValue(resolvedIdentity?.Department, device.Department);
 
-        var operationsProfile = await employeeOperationsProfileResolver.ResolveAsync(device.EmployeeId, cancellationToken);
+        var operationsProfile = await employeeOperationsProfileResolver.ResolveAsync(
+            device.EmployeeId,
+            device.Email,
+            device.UserPrincipalName,
+            cancellationToken);
         if (operationsProfile is not null)
         {
             device.Operation = ResolveValue(operationsProfile.Operation, device.Operation);

@@ -1062,7 +1062,11 @@ public sealed class PulseCheckService(
         device.UserPrincipalName = ResolveValue(resolvedIdentity?.UserPrincipalName, device.UserPrincipalName);
         device.Department = ResolveValue(resolvedIdentity?.Department, request.Department);
 
-        var operationsProfile = await employeeOperationsProfileResolver.ResolveAsync(device.EmployeeId, cancellationToken);
+        var operationsProfile = await employeeOperationsProfileResolver.ResolveAsync(
+            device.EmployeeId,
+            device.Email,
+            device.UserPrincipalName,
+            cancellationToken);
         if (operationsProfile is null)
         {
             return;

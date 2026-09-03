@@ -19,9 +19,20 @@ public sealed class FabricEmployeeOperationsProfileResolver(
     private readonly FabricOptions _fabricOptions = options.Value.Fabric;
     private ClientSecretCredential? _credential;
 
-    public async Task<EmployeeOperationsProfile?> ResolveAsync(string employeeId, CancellationToken cancellationToken)
+    public async Task<EmployeeOperationsProfile?> ResolveAsync(
+        string employeeId,
+        string? email,
+        string? userPrincipalName,
+        CancellationToken cancellationToken)
     {
-        if (!IsConfigured() || string.IsNullOrWhiteSpace(employeeId))
+        var normalizedEmployeeId = employeeId.Trim();
+        var normalizedEmail = email?.Trim() ?? string.Empty;
+        var normalizedUserPrincipalName = userPrincipalName?.Trim() ?? string.Empty;
+
+        if (!IsConfigured() ||
+            (string.IsNullOrWhiteSpace(normalizedEmployeeId) &&
+             string.IsNullOrWhiteSpace(normalizedEmail) &&
+             string.IsNullOrWhiteSpace(normalizedUserPrincipalName)))
         {
             return null;
         }
@@ -38,7 +49,9 @@ public sealed class FabricEmployeeOperationsProfileResolver(
             await using var command = connection.CreateCommand();
             command.CommandTimeout = Math.Max(5, _fabricOptions.CommandTimeoutSeconds);
             command.CommandText = BuildQuery();
-            command.Parameters.Add("@solvoId", SqlDbType.NVarChar, 80).Value = employeeId.Trim();
+            command.Parameters.Add("@solvoId", SqlDbType.NVarChar, 80).Value = normalizedEmployeeId;
+            command.Parameters.Add("@email", SqlDbType.NVarChar, 180).Value = normalizedEmail;
+            command.Parameters.Add("@userPrincipalName", SqlDbType.NVarChar, 180).Value = normalizedUserPrincipalName;
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
@@ -60,7 +73,12 @@ public sealed class FabricEmployeeOperationsProfileResolver(
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException or AuthenticationFailedException)
         {
-            logger.LogWarning(ex, "Fabric employee profile lookup failed for employee id {EmployeeId}.", employeeId);
+            logger.LogWarning(
+                ex,
+                "Fabric employee profile lookup failed for employee id {EmployeeId}, email {Email}, user principal name {UserPrincipalName}.",
+                employeeId,
+                email,
+                userPrincipalName);
             return null;
         }
     }
@@ -445,7 +463,28 @@ public sealed class FabricEmployeeOperationsProfileResolver(
                 WHERE LTRIM(RTRIM(CAST(leaderLookup.[solvo_id] AS nvarchar(80)))) =
                       LTRIM(RTRIM(CAST(employee.[leader_solvo_id] AS nvarchar(80))))
             ) leader
-            WHERE LTRIM(RTRIM(CAST(employee.[solvo_id] AS nvarchar(80)))) = LTRIM(RTRIM(@solvoId));
+            WHERE (LTRIM(RTRIM(@solvoId)) <> N''
+                    AND LTRIM(RTRIM(CAST(employee.[solvo_id] AS nvarchar(80)))) = LTRIM(RTRIM(@solvoId)))
+               OR (LTRIM(RTRIM(@email)) <> N''
+                    AND LOWER(LTRIM(RTRIM(CAST(employee.[corporate_email] AS nvarchar(180))))) = LOWER(LTRIM(RTRIM(@email))))
+               OR (LTRIM(RTRIM(@userPrincipalName)) <> N''
+                    AND LOWER(LTRIM(RTRIM(CAST(employee.[corporate_email] AS nvarchar(180))))) = LOWER(LTRIM(RTRIM(@userPrincipalName))))
+            ORDER BY
+                CASE
+                    WHEN LTRIM(RTRIM(@solvoId)) <> N''
+                     AND LTRIM(RTRIM(CAST(employee.[solvo_id] AS nvarchar(80)))) = LTRIM(RTRIM(@solvoId)) THEN 0
+                    ELSE 1
+                END,
+                CASE
+                    WHEN LTRIM(RTRIM(CAST(employee.[status] AS nvarchar(80)))) = N'Active' THEN 0
+                    ELSE 1
+                END,
+                CASE
+                    WHEN employee.[operation] IS NOT NULL
+                     AND LTRIM(RTRIM(CAST(employee.[operation] AS nvarchar(180)))) <> N'' THEN 0
+                    ELSE 1
+                END,
+                CAST(employee.[solvo_id] AS nvarchar(80));
             """;
     }
 

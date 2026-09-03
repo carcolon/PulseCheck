@@ -4,7 +4,11 @@ namespace PulseCheck.Application.Ports;
 
 public interface IEmployeeOperationsProfileResolver
 {
-    Task<EmployeeOperationsProfile?> ResolveAsync(string employeeId, CancellationToken cancellationToken);
+    Task<EmployeeOperationsProfile?> ResolveAsync(
+        string employeeId,
+        string? email,
+        string? userPrincipalName,
+        CancellationToken cancellationToken);
     Task<IReadOnlyDictionary<string, EmployeeReportFields>> ResolveReportFieldsAsync(
         IReadOnlyCollection<string> employeeIds,
         CancellationToken cancellationToken);

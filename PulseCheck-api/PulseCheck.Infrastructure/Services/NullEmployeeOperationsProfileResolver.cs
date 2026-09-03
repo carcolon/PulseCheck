@@ -5,7 +5,11 @@ namespace PulseCheck.Infrastructure.Services;
 
 public sealed class NullEmployeeOperationsProfileResolver : IEmployeeOperationsProfileResolver
 {
-    public Task<EmployeeOperationsProfile?> ResolveAsync(string employeeId, CancellationToken cancellationToken)
+    public Task<EmployeeOperationsProfile?> ResolveAsync(
+        string employeeId,
+        string? email,
+        string? userPrincipalName,
+        CancellationToken cancellationToken)
         => Task.FromResult<EmployeeOperationsProfile?>(null);
 
     public Task<IReadOnlyDictionary<string, EmployeeReportFields>> ResolveReportFieldsAsync(
