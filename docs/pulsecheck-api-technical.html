@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseCheck API · Documentacion tecnica</title>
+  <style>
+    :root {
+      --bg: #f4fafc;
+      --card: #ffffff;
+      --ink: #143247;
+      --muted: #607c90;
+      --line: #cfe1ec;
+      --accent: #0597b5;
+      --accent-soft: #e0f6fa;
+      --ok-soft: #edf9f5;
+      --warn-soft: #fff6ea;
+      --shadow: 0 18px 42px rgba(20, 50, 71, 0.08);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #edf8fb 0%, #f7fbfd 100%);
+      color: var(--ink);
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+    .hero, .section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      box-shadow: var(--shadow);
+      padding: 28px 30px;
+      margin-bottom: 22px;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-radius: 999px;
+      padding: 8px 12px;
+      margin-bottom: 16px;
+    }
+    h1 { margin: 0 0 10px; font-size: 40px; line-height: 1.08; }
+    h2 { margin: 0 0 16px; font-size: 28px; }
+    h3 { margin: 0 0 12px; font-size: 20px; }
+    p, li { color: var(--muted); line-height: 1.65; font-size: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .mini {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      background: #fbfeff;
+    }
+    .badge {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--ok-soft);
+      color: #2c7b63;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      border-top: 1px solid var(--line);
+      padding: 12px 10px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 15px;
+    }
+    th { color: var(--ink); font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; }
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+      background: #f5fbfd;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    pre {
+      margin: 0;
+      padding: 16px;
+      color: #36586e;
+      overflow: auto;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    ul { margin: 0; padding-left: 18px; }
+    .diagram {
+      background: #f9fdff;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+    }
+    .callout {
+      border: 1px solid #f3dbbf;
+      background: var(--warn-soft);
+      border-radius: 20px;
+      padding: 16px 18px;
+      color: #7b5d3f;
+    }
+    .footer-links a { color: var(--accent); text-decoration: none; }
+    @media (max-width: 960px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Repositorio 1 de 3</div>
+      <h1>PulseCheck API · Documentacion tecnica</h1>
+      <p>Este repositorio concentra el backend operativo de PulseCheck. Expone autenticacion administrativa con Entra ID, administracion de usuarios admin, administracion de campañas, sincronizacion del agente, persistencia en Azure SQL, SignalR para eventos en tiempo real y exportes. La arquitectura actual sigue un esquema de capas separadas entre dominio, aplicacion, infraestructura y API.</p>
+    </section>
+
+    <section class="section">
+      <h2>1. Objetivo y alcance</h2>
+      <div class="grid-3">
+        <div class="mini">
+          <div class="badge">Responsabilidad</div>
+          <p>API HTTP y hubs SignalR para el panel administrativo y para los agentes Windows.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Persistencia</div>
+          <p>Modelo relacional sobre Azure SQL con tablas para campañas, respuestas, dispositivos, sesiones y eventos de actividad.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Integracion</div>
+          <p>Recibe llamadas del panel React y del agente desktop. Emite eventos en tiempo real al panel administrativo.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Arquitectura actual</h2>
+      <div class="grid-2">
+        <div class="diagram">
+<pre>PulseCheck-api
+├─ PulseCheck.Domain
+│  ├─ entidades base
+│  └─ enums de negocio
+├─ PulseCheck.Application
+│  ├─ DTOs y requests
+│  ├─ puertos
+│  └─ PulseCheckService
+├─ PulseCheck.Infrastructure
+│  ├─ EF Core DbContext
+│  ├─ UnitOfWork
+│  ├─ inicializacion y seed
+│  └─ servicios tecnicos
+└─ PulseCheck.Api
+   ├─ controllers HTTP
+   ├─ hubs SignalR
+   ├─ auth handler admin
+   └─ bootstrap ASP.NET Core</pre>
+        </div>
+        <div class="mini">
+          <h3>Bootstrap</h3>
+          <ul>
+            <li><code>Program.cs</code> carga configuracion <code>PulseCheck</code> y registra infraestructura.</li>
+            <li><code>PulseCheckService</code> centraliza la logica operacional usada por controllers.</li>
+            <li>Se publican dos hubs: <code>/hubs/notifications</code> y <code>/hubs/admin-notifications</code>.</li>
+            <li>La autenticacion administrativa usa <code>AdminBearer</code> y sesiones persistidas en base de datos.</li>
+            <li>Las rutas administrativas y hubs usan politicas de rate limiting registradas en <code>Program.cs</code>.</li>
+            <li>Se inicializa la base de datos al arranque con <code>PulseCheckDbInitializer</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Flujo de aplicacion del backend</h2>
+      <div class="diagram">
+<pre>Panel Web
+   |  HTTP + Bearer
+   v
+Controllers API -------------------------------> Azure SQL
+   |                                               ^
+   | usa PulseCheckService                         |
+   v                                               |
+Application Service ------------------------------+
+   |
+   +--> publica eventos por SignalR al panel admin
+   |
+Agente Desktop
+   |  register / sync / activity-events
+   +---------------------------------------------> API</pre>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>4. Endpoints y contratos principales</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Endpoint o hub</th>
+            <th>Funcion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Autenticacion</td>
+            <td><code>POST /api/auth/login</code>, <code>POST /api/auth/entra</code>, <code>GET /api/auth/session</code>, <code>POST /api/auth/logout</code></td>
+            <td>Gestiona sesiones administrativas y acceso federado con Entra ID. En produccion el login local queda deshabilitado con <code>AllowLocalAdminLogin=false</code>.</td>
+          </tr>
+          <tr>
+            <td>Administradores</td>
+            <td><code>GET /api/admin-users</code>, <code>POST /api/admin-users</code>, <code>DELETE /api/admin-users/{id}</code></td>
+            <td>Lista, crea y elimina admins autorizados. La creacion usa email normalizado, <code>AuthenticationMode=Entra</code>, <code>IsActive=true</code> y sin password local.</td>
+          </tr>
+          <tr>
+            <td>Campañas</td>
+            <td><code>/api/campaigns</code></td>
+            <td>Alta, consulta, edicion y operacion de campañas.</td>
+          </tr>
+          <tr>
+            <td>Agente</td>
+            <td><code>POST /api/agent/register</code>, <code>POST /api/agent/sync</code>, <code>POST /api/agent/activity-events</code></td>
+            <td>Registro del dispositivo, sincronizacion de campañas y envio de eventos de bloqueo, desbloqueo y suspension.</td>
+          </tr>
+          <tr>
+            <td>Dashboard</td>
+            <td><code>GET /api/dashboard/overview</code>, <code>GET /api/dashboard/summary</code>, <code>GET /api/dashboard/report/excel</code></td>
+            <td>Entrega KPIs, tendencias, alertas y exportes del panel administrativo. El Excel de respuestas incluye escala y respuesta para preguntas numericas.</td>
+          </tr>
+          <tr>
+            <td>Tiempo real</td>
+            <td><code>/hubs/notifications</code>, <code>/hubs/admin-notifications</code></td>
+            <td>Notificaciones de cambios operativos para agentes y para administradores.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. Modelo de datos vigente</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Tabla</th>
+            <th>Uso</th>
+            <th>Campos relevantes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Campaigns</code></td>
+            <td>Configuracion de campañas y preguntas</td>
+            <td>Nombre, audiencia, estado, regla de programacion, ventana de entrega, JSON de preguntas, creador, timestamps.</td>
+          </tr>
+          <tr>
+            <td><code>Devices</code></td>
+            <td>Inventario operativo de agentes</td>
+            <td><code>DeviceId</code> unico, hostname, usuario, correo, departamento, sistema operativo, version del agente, primera y ultima vista.</td>
+          </tr>
+          <tr>
+            <td><code>Responses</code></td>
+            <td>Respuestas capturadas</td>
+            <td>Campaña, pregunta, tipo, valor numerico, texto, usuario, dispositivo, hora de respuesta, <code>SubmissionId</code>.</td>
+          </tr>
+          <tr>
+            <td><code>DeliveryLogs</code></td>
+            <td>Trazabilidad de entrega</td>
+            <td>Estado, error, reintentos, campaign/device binding, timestamps.</td>
+          </tr>
+          <tr>
+            <td><code>AgentActivityEvents</code></td>
+            <td>Telemetria de bloqueo, desbloqueo y suspension</td>
+            <td>Tipo de evento, razon estimada del lock, segundos de inactividad al bloquear, duracion del evento, usuario, correo, dispositivo.</td>
+          </tr>
+          <tr>
+            <td><code>AdminUsers</code> y <code>AdminSessions</code></td>
+            <td>Control de acceso administrativo</td>
+            <td>Correo, display name, object id Entra, tenant id, modo de autenticacion, token hash, expiracion, revocacion, user agent e IP.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>6. Autenticacion y autorizacion</h2>
+      <div class="grid-2">
+        <div class="mini">
+          <h3>Panel administrativo</h3>
+          <ul>
+            <li>Sesion local persistida en <code>AdminSessions</code>.</li>
+            <li>Modo federado con Entra ID soportado por <code>POST /api/auth/entra</code>.</li>
+            <li>La autorizacion final sigue resolviendose contra la tabla <code>AdminUsers</code>.</li>
+            <li>Los admins Entra se gestionan desde <code>AdminUsersController</code>.</li>
+          </ul>
+        </div>
+        <div class="mini">
+          <h3>Agente desktop</h3>
+          <ul>
+            <li>No usa login interactivo.</li>
+            <li>Se identifica por metadatos de dispositivo y usuario en <code>register</code> y <code>sync</code>.</li>
+            <li>Actualmente no existe un secreto por agente ni mTLS entre agente y API.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">
+        La separacion entre autenticacion administrativa y autenticacion del agente es importante. El panel opera con bearer de sesion administrativa; el agente opera como software corporativo identificado por metadatos del endpoint.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>7. Despliegue e infraestructura Azure</h2>
+      <div class="grid-2">
+        <div class="diagram">
+<pre>Azure Resource Group
+├─ Static Web App
+├─ App Service (API)
+├─ Azure SQL Server
+│  └─ Azure SQL Database
+└─ Application Insights</pre>
+        </div>
+        <div class="mini">
+          <h3>Pipeline</h3>
+          <ul>
+            <li><code>azure-pipelines-api.yml</code> publica ZIP y despliega al App Service.</li>
+            <li>Se inyectan app settings para origenes permitidos, Entra y cadena SQL.</li>
+            <li>El Bicep principal define App Service, SQL, Static Web App y App Insights.</li>
+            <li>App Service forza <code>httpsOnly</code> y TLS minimo 1.2.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>8. Operacion y observabilidad</h2>
+      <div class="grid-3">
+        <div class="mini">
+          <div class="badge">Tiempo real</div>
+          <p>SignalR publica respuestas nuevas, actividad de agente y cambios operativos para refrescar el panel sin depender unicamente de polling.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Inicializacion</div>
+          <p>La base de datos se inicializa al arranque. Esto simplifica ambientes nuevos, pero requiere cuidado en produccion para no mezclar seed con migraciones controladas.</p>
+        </div>
+        <div class="mini">
+          <div class="badge">Exportes</div>
+          <p>La API genera reportes Excel desde el dashboard. Los exportes consumen el estado vigente del repositorio y la base de datos, incluyendo escala y respuesta para preguntas numericas.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>9. Riesgos y limites vigentes</h2>
+      <ul>
+        <li>La identidad del agente todavia se basa en metadatos del endpoint y no en una credencial unica por instalacion.</li>
+        <li>La base SQL se aprovisiona con <code>publicNetworkAccess = Enabled</code>; el control real depende de firewall, cadena de conexion y contexto Azure.</li>
+        <li>No existe API Gateway ni WAF dedicado delante del App Service en el estado actual.</li>
+        <li>El seeding automatico en arranque es comodo para ambientes controlados, pero no reemplaza un proceso formal de migraciones versionadas.</li>
+      </ul>
+    </section>
+
+    <section class="section footer-links">
+      <h2>10. Evidencia de referencia</h2>
+      <ul>
+        <li><a href="../PulseCheck-api/PulseCheck.Api/Program.cs">PulseCheck.Api/Program.cs</a></li>
+        <li><a href="../PulseCheck-api/PulseCheck.Infrastructure/Persistence/PulseCheckDbContext.cs">PulseCheck.Infrastructure/Persistence/PulseCheckDbContext.cs</a></li>
+        <li><a href="../PulseCheck-api/azure-pipelines-api.yml">azure-pipelines-api.yml</a></li>
+        <li><a href="../PulseCheck-api/infra/main.bicep">infra/main.bicep</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,9 @@
+variables:
+  azureServiceConnection: 'sc-pulsecheck-dev'
+  azureResourceGroup: 'SOL-SWA-APP-DEV'
+  azureEnvironmentName: 'pulsecheck-dev'
+  appServiceName: 'swa-back-dev'
+  apiBaseUrl: 'https://swa-back-dev-ctexbweufbhedub8.eastus2-01.azurewebsites.net'
+  agentDownloadUrl: ''
+  staticWebAppName: 'swa-front-dev'
+  staticWebAppDeploymentToken: '$(AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_OCEAN_0298F550F)'

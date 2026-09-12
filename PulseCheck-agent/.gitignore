@@ -1,0 +1,4 @@
+publish/
+artifacts/
+installer/innosetup.exe
+build-velopack-installer.ps1

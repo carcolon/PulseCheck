@@ -1,0 +1,12 @@
+variables:
+  azureServiceConnection: 'sc-pulsecheck-prod'
+  azureResourceGroup: 'SOL-PULSE-APP-PROD'
+  azureEnvironmentName: 'pulsecheck-prod'
+  appServiceName: 'pulse-back-prod'
+  apiBaseUrl: 'https://pulse-back-prod-exasbcc8c2g7cybr.eastus2-01.azurewebsites.net'
+  agentDownloadUrl: 'https://pulsecheckaccountprod.blob.core.windows.net/pulsecheck-agent-prod/PulseCheck.exe'
+  staticWebAppName: 'pulse-front-prod'
+  staticWebAppDeploymentToken: ''
+  entraTenantId: ''
+  entraClientId: ''
+  entraApiClientId: ''

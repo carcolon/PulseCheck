@@ -1,0 +1,246 @@
+name: pulsecheck-api-${{ parameters.environment }}-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - PulseCheck.Api/*
+    - PulseCheck.Api/**
+    - PulseCheck.Application/*
+    - PulseCheck.Application/**
+    - PulseCheck.Domain/*
+    - PulseCheck.Domain/**
+    - PulseCheck.Infrastructure/*
+    - PulseCheck.Infrastructure/**
+    - azure-pipelines-api*.yml
+    - pipelines/variables/*
+
+parameters:
+- name: environment
+  displayName: Environment
+  type: string
+  default: prod
+  values:
+  - dev
+  - prod
+
+variables:
+- ${{ if eq(parameters.environment, 'dev') }}:
+  - template: pipelines/variables/dev.yml
+  - group: PulseCheckBackDev
+- ${{ if eq(parameters.environment, 'prod') }}:
+  - template: pipelines/variables/prod.yml
+  - group: PulseCheckBackProd
+stages:
+- stage: BuildAndDeployApi
+  displayName: Build and deploy API (${{ parameters.environment }})
+  jobs:
+  - deployment: Api
+    displayName: API (${{ parameters.environment }})
+    environment: $(azureEnvironmentName)
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - task: UseDotNet@2
+            displayName: Install .NET SDK
+            inputs:
+              packageType: sdk
+              version: '8.x'
+          - script: |
+              echo "Deploying environment '${{ parameters.environment }}' from branch '$(Build.SourceBranchName)' (reason: $(Build.Reason))"
+              if [ "$(Build.Reason)" = "Manual" ]; then
+                echo "Manual run detected; allowing selected branch."
+                exit 0
+              fi
+              if [ "${{ parameters.environment }}" = "dev" ] && [ "$(Build.SourceBranchName)" != "dev" ]; then
+                echo "Dev deployments must run from the dev branch."
+                exit 1
+              fi
+              if [ "${{ parameters.environment }}" = "prod" ] && [ "$(Build.SourceBranchName)" != "main" ]; then
+                echo "Prod deployments must run from the main branch."
+                exit 1
+              fi
+            displayName: Validate deployment environment
+          - task: UsePythonVersion@0
+            displayName: Use Python 3.x
+            inputs:
+              versionSpec: '3.x'
+          - script: |
+              python -m pip install --upgrade pip
+              pip install semgrep
+            displayName: Install Semgrep
+          - script: |
+              dotnet restore PulseCheck.Api/PulseCheck.Api.csproj
+              dotnet list PulseCheck.Api/PulseCheck.Api.csproj package --vulnerable --include-transitive --format json > "$(Build.ArtifactStagingDirectory)/dotnet-vulnerable-api.json"
+            displayName: Dependency scan (.NET vulnerable packages JSON)
+          - script: |
+              semgrep --config p/owasp-top-ten PulseCheck.Api PulseCheck.Application PulseCheck.Infrastructure --json --output "$(Build.ArtifactStagingDirectory)/semgrep-api.json"
+            displayName: SAST scan (Semgrep OWASP)
+          - task: PowerShell@2
+            displayName: Security gate (api)
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                $semgrepPath = "$(Build.ArtifactStagingDirectory)/semgrep-api.json"
+                $dotnetPath = "$(Build.ArtifactStagingDirectory)/dotnet-vulnerable-api.json"
+
+                $sem = Get-Content $semgrepPath -Raw | ConvertFrom-Json
+                $semErrors = @($sem.results | Where-Object { $_.extra.severity -eq "ERROR" }).Count
+
+                $dotnetJson = Get-Content $dotnetPath -Raw
+                $highOrCritical = [regex]::Matches($dotnetJson, '"severity"\s*:\s*"(?i)(high|critical)"').Count
+
+                Write-Host "Semgrep ERROR findings: $semErrors"
+                Write-Host ".NET high/critical vulnerabilities: $highOrCritical"
+
+                if ($semErrors -gt 0 -or $highOrCritical -gt 0) {
+                  throw "Security gate failed. Semgrep ERROR=$semErrors, dotnet high/critical=$highOrCritical"
+                }
+          - script: |
+              dotnet publish PulseCheck.Api/PulseCheck.Api.csproj -c Release -o "$(Build.ArtifactStagingDirectory)/api-publish"
+            displayName: Publish API
+          - script: |
+              set -Eeuo pipefail
+              trap 'echo "##[error]EF Core migration script failed at line $LINENO with exit code $?."' ERR
+
+              dotnet tool install --global dotnet-ef --version 8.0.10
+
+              echo "EF Core migrations before database update:"
+              dotnet ef migrations list \
+                --project PulseCheck.Infrastructure/PulseCheck.Infrastructure.csproj \
+                --startup-project PulseCheck.Api/PulseCheck.Api.csproj \
+                --context PulseCheckDbContext
+
+              echo "Applying EF Core migrations:"
+              migration_log="$(Build.ArtifactStagingDirectory)/ef-database-update.log"
+              if ! dotnet ef database update --verbose \
+                --project PulseCheck.Infrastructure/PulseCheck.Infrastructure.csproj \
+                --startup-project PulseCheck.Api/PulseCheck.Api.csproj \
+                --context PulseCheckDbContext 2>&1 | tee "$migration_log"; then
+                echo "##[error]EF Core database update command failed. See log above."
+                exit 1
+              fi
+
+              if grep -Eiq "(Exception|An error occurred|failed|Execution Timeout|Error Number:|CREATE DATABASE operation failed)" "$migration_log"; then
+                echo "##[error]EF Core database update reported an error even though the command completed."
+                grep -Ein "(Exception|An error occurred|failed|Execution Timeout|Error Number:|CREATE DATABASE operation failed)" "$migration_log" || true
+                exit 1
+              fi
+
+              echo "EF Core migrations after database update:"
+              migrations_after_log="$(Build.ArtifactStagingDirectory)/ef-migrations-after.log"
+              dotnet ef migrations list \
+                --project PulseCheck.Infrastructure/PulseCheck.Infrastructure.csproj \
+                --startup-project PulseCheck.Api/PulseCheck.Api.csproj \
+                --context PulseCheckDbContext 2>&1 | tee "$migrations_after_log"
+
+              if grep -q "(Pending)" "$migrations_after_log"; then
+                echo "##[error]EF Core migrations are still pending after database update."
+                grep "(Pending)" "$migrations_after_log" || true
+                exit 1
+              fi
+            displayName: Apply EF Core migrations
+            env:
+              PULSECHECK_DATABASE_PROVIDER: SqlServer
+              ConnectionStrings__PulseCheckDb: $(pulseCheckDbConnectionString)
+              ASPNETCORE_ENVIRONMENT: $(aspNetCoreEnvironment)
+              DOTNET_ENVIRONMENT: $(aspNetCoreEnvironment)
+          - task: ArchiveFiles@2
+            displayName: Zip publish output
+            inputs:
+              rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/api-publish'
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: '$(Build.ArtifactStagingDirectory)/pulsecheck-api.zip'
+              replaceExistingArchive: true
+          - task: AzureCLI@2
+            displayName: Deploy API to App Service
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                SWA_HOSTNAME=$(az staticwebapp show \
+                  --name "$(staticWebAppName)" \
+                  --resource-group "$(azureResourceGroup)" \
+                  --query defaultHostname -o tsv)
+
+                APPINSIGHTS_CS=$(az monitor app-insights component show \
+                  --app "$(applicationInsightsName)" \
+                  --resource-group "$(azureResourceGroup)" \
+                  --query connectionString -o tsv)
+
+                SQL_FQDN=$(az sql server show \
+                  --name "$(sqlServerName)" \
+                  --resource-group "$(azureResourceGroup)" \
+                  --query fullyQualifiedDomainName -o tsv)
+
+                APP_SETTINGS=(
+                  ASPNETCORE_ENVIRONMENT="$(aspNetCoreEnvironment)"
+                  DOTNET_ENVIRONMENT="$(aspNetCoreEnvironment)"
+                  APPLICATIONINSIGHTS_CONNECTION_STRING="$APPINSIGHTS_CS"
+                  PulseCheck__EnvironmentName="$(deploymentEnvironmentName)"
+                  PulseCheck__DatabaseProvider="SqlServer"
+                  PulseCheck__AllowedOrigins__0="https://$SWA_HOSTNAME"
+                  PulseCheck__AgentSecurity__ProvisioningToken="$(agentProvisioningToken)"
+                  PulseCheck__Entra__Enabled="true"
+                  PulseCheck__Entra__GraphEnabled="true"
+                  PulseCheck__Entra__TenantId="$(entraTenantId)"
+                  PulseCheck__Entra__ApiClientId="$(entraApiClientId)"
+                  PulseCheck__Entra__WebClientId="$(entraWebClientId)"
+                  PulseCheck__Entra__GraphClientId="$(entraGraphClientId)"
+                  PulseCheck__Entra__GraphClientSecret="$(entraGraphClientSecret)"
+                  PulseCheck__Fabric__Enabled="true"
+                  PulseCheck__Fabric__Endpoint="$(fabricEndpoint)"
+                  PulseCheck__Fabric__Database="$(fabricDatabase)"
+                  PulseCheck__Fabric__CommandTimeoutSeconds="$(fabricCommandTimeoutSeconds)"
+                  PulseCheck__EmployeeProfileBackfill__Enabled="true"
+                  PulseCheck__EmployeeProfileBackfill__MaxDevicesPerRun="200"
+                  PulseCheck__EmployeeProfileBackfill__UpdateHistoricalResponses="true"
+                  PulseCheck__EmployeeProfileBackfill__StartupDelaySeconds="15"
+                  EmailSettings__Mode="$(EmailSettings__Mode)"
+                  EmailSettings__Endpoint="$(EmailSettings__Endpoint)"
+                  EmailSettings__AccessKey="$(EmailSettings__AccessKey)"
+                  EmailSettings__Email="$(EmailSettings__Email)"
+                  EmailSettings__DisplayName="$(EmailSettings__DisplayName)"
+                  ConnectionStrings__PulseCheckDb="$(pulseCheckDbConnectionString)"
+                  WEBSITE_RUN_FROM_PACKAGE="1"
+                )
+
+                if [ "$(allowLocalOrigins)" = "true" ]; then
+                  APP_SETTINGS+=(
+                    PulseCheck__AllowedOrigins__2="http://localhost:5173"
+                    PulseCheck__AllowedOrigins__3="https://localhost:5173"
+                  )
+                fi
+
+                if [ -n "$(staticWebAppCustomOrigin)" ]; then
+                  APP_SETTINGS+=(
+                    PulseCheck__AllowedOrigins__1="$(staticWebAppCustomOrigin)"
+                  )
+                fi
+
+                az webapp config appsettings set \
+                  --name "$(appServiceName)" \
+                  --resource-group "$(azureResourceGroup)" \
+                  --settings "${APP_SETTINGS[@]}"
+
+                if [ "$(allowLocalOrigins)" != "true" ]; then
+                  az webapp config appsettings delete \
+                    --name "$(appServiceName)" \
+                    --resource-group "$(azureResourceGroup)" \
+                    --setting-names PulseCheck__AllowedOrigins__2 PulseCheck__AllowedOrigins__3
+                fi
+
+                az webapp deploy \
+                  --name "$(appServiceName)" \
+                  --resource-group "$(azureResourceGroup)" \
+                  --src-path "$(Build.ArtifactStagingDirectory)/pulsecheck-api.zip" \
+                  --type zip

@@ -1,0 +1,264 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "9138499301467256180"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Environment short name. Expected values: dev or prod."
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure region for all resources."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags applied to all supported resources."
+      }
+    },
+    "appServicePlanName": {
+      "type": "string",
+      "metadata": {
+        "description": "App Service plan name."
+      }
+    },
+    "appServicePlanSkuName": {
+      "type": "string",
+      "defaultValue": "B1",
+      "metadata": {
+        "description": "App Service plan sku name, for example B1 or P1v3."
+      }
+    },
+    "appServicePlanSkuTier": {
+      "type": "string",
+      "defaultValue": "Basic",
+      "metadata": {
+        "description": "App Service plan sku tier."
+      }
+    },
+    "apiAppServiceName": {
+      "type": "string",
+      "metadata": {
+        "description": "API App Service name."
+      }
+    },
+    "staticWebAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Static Web App name."
+      }
+    },
+    "applicationInsightsName": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights component name."
+      }
+    },
+    "sqlServerName": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure SQL logical server name."
+      }
+    },
+    "sqlDatabaseName": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure SQL database name."
+      }
+    },
+    "sqlAdminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure SQL admin username."
+      }
+    },
+    "sqlAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Azure SQL admin password."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[parameters('applicationInsightsName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      }
+    },
+    {
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[parameters('sqlServerName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "administratorLogin": "[parameters('sqlAdminUsername')]",
+        "administratorLoginPassword": "[parameters('sqlAdminPassword')]",
+        "publicNetworkAccess": "Enabled",
+        "minimalTlsVersion": "1.2"
+      }
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', parameters('sqlServerName'), parameters('sqlDatabaseName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "Basic",
+        "tier": "Basic"
+      },
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/firewallRules",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', parameters('sqlServerName'), 'AllowAzureServices')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "kind": "linux",
+      "sku": {
+        "name": "[parameters('appServicePlanSkuName')]",
+        "tier": "[parameters('appServicePlanSkuTier')]",
+        "capacity": 1
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('apiAppServiceName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "kind": "app,linux",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "minTlsVersion": "1.2",
+          "linuxFxVersion": "DOTNETCORE|8.0",
+          "alwaysOn": true,
+          "ftpsState": "Disabled",
+          "appSettings": [
+            {
+              "name": "ASPNETCORE_ENVIRONMENT",
+              "value": "[if(equals(parameters('environmentName'), 'prod'), 'Production', 'Development')]"
+            },
+            {
+              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
+            },
+            {
+              "name": "PulseCheck__EnvironmentName",
+              "value": "[parameters('environmentName')]"
+            },
+            {
+              "name": "PulseCheck__DatabaseProvider",
+              "value": "SqlServer"
+            },
+            {
+              "name": "ConnectionStrings__PulseCheckDb",
+              "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Persist Security Info=False;User ID={2};Password={3};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01-preview').fullyQualifiedDomainName, parameters('sqlDatabaseName'), parameters('sqlAdminUsername'), parameters('sqlAdminPassword'))]"
+            },
+            {
+              "name": "WEBSITE_RUN_FROM_PACKAGE",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', parameters('applicationInsightsName'))]",
+        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+        "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('sqlDatabaseName'))]",
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/staticSites",
+      "apiVersion": "2023-12-01",
+      "name": "[parameters('staticWebAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "Free",
+        "tier": "Free"
+      },
+      "properties": {
+        "allowConfigFileUpdates": true,
+        "publicNetworkAccess": "Enabled",
+        "stagingEnvironmentPolicy": "Enabled"
+      }
+    }
+  ],
+  "outputs": {
+    "apiAppServiceName": {
+      "type": "string",
+      "value": "[parameters('apiAppServiceName')]"
+    },
+    "apiAppServiceUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('apiAppServiceName')), '2023-12-01').defaultHostName)]"
+    },
+    "staticWebAppName": {
+      "type": "string",
+      "value": "[parameters('staticWebAppName')]"
+    },
+    "staticWebAppUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2023-12-01').defaultHostname)]"
+    },
+    "sqlServerFqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01-preview').fullyQualifiedDomainName]"
+    },
+    "sqlDatabaseName": {
+      "type": "string",
+      "value": "[parameters('sqlDatabaseName')]"
+    },
+    "applicationInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString]"
+    }
+  }
+}

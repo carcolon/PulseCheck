@@ -1,0 +1,6 @@
+@PulseCheck.Api_HostAddress = http://localhost:5236
+
+GET {{PulseCheck.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
